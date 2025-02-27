@@ -1,62 +1,14 @@
-# Parr-4-The-Course
+# Parr-4-The-Course  
 
-A personal cookbook web application built with React, Vite, Supabase, and hosted on Vercel.
+A personal cookbook web application built with React, Vite, Supabase, and hosted on Vercel.  
 
-## Features
+## Tech Stack  
 
-- Browse and search recipes
-- View detailed recipe information
-- Add new recipes with ingredients and instructions
-- Edit existing recipes
-- Delete recipes
-- Mobile-responsive design
-
-## Tech Stack
-
-- **Frontend**: React with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Database**: Supabase
-- **Hosting**: Vercel
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v16+)
-- npm or yarn
-- Supabase account
-
-### Setup
-
-1. Clone the repository
-   ```bash
-   git clone <repository-url>
-   cd parr-4-the-course
-   ```
-
-2. Install dependencies
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
-
-3. Set up environment variables
-   - Copy `.env.example` to `.env`
-   - Fill in your Supabase URL and anon key
-
-4. Start the development server
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-### Supabase Setup
-
-1. Create a new Supabase project
-2. Run the following SQL to set up your database table:
+- **Frontend**: React with TypeScript  
+- **Build Tool**: Vite  
+- **Styling**: Tailwind CSS  
+- **Database**: Supabase  
+- **Hosting**: Vercel  
 
 ## HOW TO SET UP AND EDIT CODE
 
