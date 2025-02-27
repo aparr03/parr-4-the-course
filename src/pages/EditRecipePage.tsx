@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Database } from '../types/supabase'
+//import { Database } from '../types/supabase'
 
-type Recipe = Database['public']['Tables']['recipes']['Row']
-type SupabaseClient = typeof supabase;
+//type Recipe = Database['public']['Tables']['recipes']['Row']
+//type SupabaseClient = typeof supabase;
 
 const EditRecipePage = () => {
   const { id } = useParams<{ id: string }>()

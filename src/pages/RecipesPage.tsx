@@ -4,7 +4,7 @@ import RecipeCard from '../components/RecipeCard'
 import { Database } from '../types/supabase'
 
 type Recipe = Database['public']['Tables']['recipes']['Row']
-type SupabaseClient = typeof supabase;
+//type SupabaseClient = typeof supabase;
 
 const RecipesPage = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([])
