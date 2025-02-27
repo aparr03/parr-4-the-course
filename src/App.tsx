@@ -20,10 +20,11 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
-            <Route path="recipes" element={<RecipesPage />} />
-            <Route path="recipes/:id" element={<RecipeDetailPage />} />
-            <Route path="recipes/add" element={<AddRecipePage />} />
-            <Route path="recipes/edit/:id" element={<EditRecipePage />} />
+            <Route path="recipes">
+              <Route index element={<RecipesPage />} />
+              <Route path=":id" element={<RecipeDetailPage />} />
+              <Route path="edit/:id" element={<EditRecipePage />} />
+            </Route>
             <Route path="add-recipe" element={<AddRecipePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
