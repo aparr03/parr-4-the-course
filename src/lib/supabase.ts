@@ -1,6 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-//import { Database } from '../types/supabase';
-//import { mockSupabase } from './mockService';
 import { checkEnvironmentVariables } from '../utils/envCheck';
 
 // Run environment checks
@@ -10,11 +8,16 @@ if (!envValid) {
   console.error('Supabase initialization failed: Environment variables are invalid or missing');
 }
 
-// Check if we're using mock data
-export const usingMockData = import.meta.env.VITE_USE_MOCK_DATA === 'true';
+// Check if we're using mock data - add a default value if undefined
+export const usingMockData = 
+  import.meta.env.VITE_USE_MOCK_DATA === 'true' || 
+  import.meta.env.VITE_USE_MOCK_DATA === true;
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Ensure supabaseUrl and supabaseAnonKey have default values to prevent undefined errors
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 
+  'https://your-default-project.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 
+  'fallback-anon-key-for-development-only';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

@@ -31,14 +31,17 @@ const AddRecipePage = () => {
       setLoading(true)
       setError(null)
       
+      // Add null checks before using split
       const ingredientsArray = ingredients
-        .split('\n')
-        .map(item => item.trim())
-        .filter(Boolean)
+        ? ingredients
+            .split('\n')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : [];
         
-      const tagsArray = tags
+      const tagsArray = tags && tags.trim() !== ''
         ? tags.split(',').map(tag => tag.trim()).filter(Boolean)
-        : []
+        : [];
         
       const { data, error } = await supabase
         .from('recipes')
