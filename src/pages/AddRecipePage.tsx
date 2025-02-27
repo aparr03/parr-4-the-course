@@ -1,235 +1,123 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-//import { Database } from '../types/supabase'
-
-//type SupabaseClient = typeof supabase;
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { colors, componentStyles } from '../styles/theme';
 
 const AddRecipePage = () => {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [cookingTime, setCookingTime] = useState(30)
-  const [servings, setServings] = useState(4)
-  const [category, setCategory] = useState('')
-  const [tags, setTags] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [ingredients, setIngredients] = useState('')
-  const [instructions, setInstructions] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const [recipe, setRecipe] = useState({
+    title: '',
+    ingredients: '',
+    instructions: '',
+    time: '',
+    servings: ''
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setRecipe({
+      ...recipe,
+      [name]: value
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Recipe to save:', recipe);
     
-    if (!title || !ingredients || !instructions) {
-      setError('Please fill in all required fields')
-      return
-    }
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // Add null checks before using split
-      const ingredientsArray = ingredients
-        ? ingredients
-            .split('\n')
-            .map(item => item.trim())
-            .filter(Boolean)
-        : [];
-        
-      const tagsArray = tags && tags.trim() !== ''
-        ? tags.split(',').map(tag => tag.trim()).filter(Boolean)
-        : [];
-        
-      const { data, error } = await supabase
-        .from('recipes')
-        .insert([
-          {
-            title,
-            description: description || null,
-            cooking_time: cookingTime,
-            servings,
-            category: category || null,
-            tags: tagsArray.length > 0 ? tagsArray : null,
-            ingredients: ingredientsArray,
-            instructions,
-            image_url: imageUrl || null,
-            user_id: 'anonymous', // In a real app, you'd use authenticated user's ID
-          }
-        ])
-        .select()
-        
-      if (error) throw error
-      
-      // Navigate to the new recipe page
-      if (data && data[0]) {
-        navigate(`/recipes/${data[0].id}`)
-      } else {
-        navigate('/recipes')
-      }
-    } catch (error: any) {
-      console.error('Error adding recipe:', error)
-      setError('Failed to add recipe')
-    } finally {
-      setLoading(false)
-    }
-  }
+    navigate('/recipes');
+  };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Add New Recipe</h1>
+    <div className="container mx-auto p-4">
+      <h1 className={componentStyles.pageHeading}>Add New Recipe</h1>
       
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4">
+      <div className={`${colors.background.card} shadow-md rounded-lg p-6 ${colors.text.primary}`}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Title *
-            </label>
+            <label htmlFor="title" className="block mb-1 font-medium">Recipe Title</label>
             <input
+              id="title"
+              name="title"
               type="text"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
               required
+              value={recipe.title}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Description
-            </label>
+            <label htmlFor="ingredients" className="block mb-1 font-medium">Ingredients</label>
             <textarea
-              className="w-full p-2 border border-gray-300 rounded-md"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Cooking Time (minutes) *
-            </label>
-            <input
-              type="number"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={cookingTime}
-              onChange={(e) => setCookingTime(Number(e.target.value))}
-              min="1"
+              id="ingredients"
+              name="ingredients"
               required
+              value={recipe.ingredients}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={4}
+              placeholder="Enter ingredients, one per line"
             />
           </div>
           
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Servings *
-            </label>
-            <input
-              type="number"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={servings}
-              onChange={(e) => setServings(Number(e.target.value))}
-              min="1"
-              required
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Category
-            </label>
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="E.g., Dessert, Main Course"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Tags (comma separated)
-            </label>
-            <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-              placeholder="E.g., quick, vegetarian, pasta"
-            />
-          </div>
-          
-          <div className="col-span-full">
-            <label className="block text-gray-700 font-medium mb-2">
-              Image URL
-            </label>
-            <input
-              type="url"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
-          
-          <div className="col-span-full">
-            <label className="block text-gray-700 font-medium mb-2">
-              Ingredients * (one per line)
-            </label>
+            <label htmlFor="instructions" className="block mb-1 font-medium">Instructions</label>
             <textarea
-              className="w-full p-2 border border-gray-300 rounded-md"
+              id="instructions"
+              name="instructions"
+              required
+              value={recipe.instructions}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={6}
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              required
-              placeholder="2 cups flour
-1 tsp salt
-3 tbsp butter"
+              placeholder="Enter step by step instructions"
             />
           </div>
           
-          <div className="col-span-full">
-            <label className="block text-gray-700 font-medium mb-2">
-              Instructions *
-            </label>
-            <textarea
-              className="w-full p-2 border border-gray-300 rounded-md"
-              rows={8}
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              required
-              placeholder="Detailed step-by-step instructions..."
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="time" className="block mb-1 font-medium">Cooking Time (minutes)</label>
+              <input
+                id="time"
+                name="time"
+                type="number"
+                value={recipe.time}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="servings" className="block mb-1 font-medium">Servings</label>
+              <input
+                id="servings"
+                name="servings"
+                type="number"
+                value={recipe.servings}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
-        </div>
-        
-        <div className="flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => navigate('/recipes')}
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-secondary text-white rounded-md hover:bg-opacity-80 disabled:opacity-50"
-          >
-            {loading ? 'Adding Recipe...' : 'Add Recipe'}
-          </button>
-        </div>
-      </form>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Save Recipe
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default AddRecipePage
+export default AddRecipePage;

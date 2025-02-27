@@ -24,6 +24,7 @@ function App() {
             <Route path="recipes/:id" element={<RecipeDetailPage />} />
             <Route path="recipes/add" element={<AddRecipePage />} />
             <Route path="recipes/edit/:id" element={<EditRecipePage />} />
+            <Route path="add-recipe" element={<AddRecipePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

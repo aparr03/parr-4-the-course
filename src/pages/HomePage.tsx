@@ -1,7 +1,13 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { colors, componentStyles } from '../styles/theme';
 
 const HomePage = () => {
+  const navigate = useNavigate();
+
+  const handleCreateRecipe = () => {
+    navigate('/add-recipe');
+  };
+
   return (
     <div className="container mx-auto p-4">
       <h1 className={componentStyles.pageHeading}>Welcome to Recipe App</h1>
@@ -27,12 +33,12 @@ const HomePage = () => {
           <div className="bg-green-50 p-4 rounded-md">
             <h2 className="text-xl font-semibold mb-2 text-gray-900">Create Recipe</h2>
             <p className="mb-3 text-gray-800">Share your own recipe with the community.</p>
-            <Link 
-              to="/create-recipe" 
+            <button 
+              onClick={handleCreateRecipe} 
               className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             >
               Create New Recipe
-            </Link>
+            </button>
           </div>
         </div>
       </div>
