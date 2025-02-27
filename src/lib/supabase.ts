@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '../types/supabase';
-import { mockSupabase } from './mockService';
+//import { Database } from '../types/supabase';
+//import { mockSupabase } from './mockService';
 import { checkEnvironmentVariables } from '../utils/envCheck';
 
 // Run environment checks

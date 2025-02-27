@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Database } from '../types/supabase'
+//import { Database } from '../types/supabase'
 
-type SupabaseClient = typeof supabase;
+//type SupabaseClient = typeof supabase;
 
 const AddRecipePage = () => {
   const [title, setTitle] = useState('')
