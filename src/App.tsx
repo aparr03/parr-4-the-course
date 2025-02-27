@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import RecipesPage from './pages/RecipesPage';
@@ -12,20 +12,16 @@ import { usingMockData } from './lib/supabase';
 function App() {  
   return (
     <>
-      {/* Show mock data banner if using mock data */}
       <MockDataBanner />
       
-      {/* App content with proper text contrast */}
       <div className="min-h-screen bg-gray-50 text-gray-900">
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
-            <Route path="recipes">
-              <Route index element={<RecipesPage />} />
-              <Route path=":id" element={<RecipeDetailPage />} />
-              <Route path="edit/:id" element={<EditRecipePage />} />
-            </Route>
-            <Route path="add-recipe" element={<AddRecipePage />} />
+          <Route element={<Layout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/recipes" element={<RecipesPage />} />
+            <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="/recipes/edit/:id" element={<EditRecipePage />} />
+            <Route path="/add-recipe" element={<AddRecipePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
