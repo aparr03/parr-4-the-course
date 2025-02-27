@@ -1,5 +1,4 @@
-import { supabase, usingMockData } from './supabase';
-import * as mockData from './mockData';
+import { supabase } from './supabase';
 
 /**
  * Data service to handle getting data from either Supabase or mock data
@@ -15,28 +14,7 @@ interface GetRecipesParams {
 
 // Get recipes (either from Supabase or mock data)
 export async function getRecipes({ limit = 10, offset = 0, search = '' }: GetRecipesParams) {
-  if (usingMockData) {
-    // Filter by search term if provided
-    let filteredRecipes = mockData.mockRecipes;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredRecipes = filteredRecipes.filter(recipe => 
-        recipe.title.toLowerCase().includes(searchLower) || 
-        recipe.description?.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Simulate pagination
-    const paginatedRecipes = filteredRecipes.slice(offset, offset + limit);
-    
-    return {
-      data: paginatedRecipes,
-      count: filteredRecipes.length,
-      error: null
-    };
-  }
-  
-  // Use real Supabase data
+   // Real Supabase data
   try {
     let query = supabase
       .from('recipes')
@@ -59,43 +37,7 @@ export async function getRecipes({ limit = 10, offset = 0, search = '' }: GetRec
 
 // Get a single recipe with its ingredients and categories
 export async function getRecipe(id: string | number) {
-  if (usingMockData) {
-    const recipe = mockData.mockRecipes.find(r => r.id === id);
-    if (!recipe) {
-      return { data: null, error: { message: 'Recipe not found' } };
-    }
-    
-    // Get recipe ingredients
-    const recipeIngredients = mockData.mockRecipeIngredients.filter(ri => ri.recipe_id === id);
-    const ingredientsWithDetails = recipeIngredients.map(ri => {
-      const ingredient = mockData.mockIngredients.find(i => i.id === ri.ingredient_id);
-      return {
-        ...ri,
-        ingredient_name: ingredient?.name
-      };
-    });
-    
-    // Get recipe categories
-    const recipeCategories = mockData.mockRecipeCategories.filter(rc => rc.recipe_id === id);
-    const categoriesWithDetails = recipeCategories.map(rc => {
-      const category = mockData.mockCategories.find(c => c.id === rc.category_id);
-      return {
-        ...rc,
-        category_name: category?.name
-      };
-    });
-    
-    return {
-      data: {
-        ...recipe,
-        ingredients: ingredientsWithDetails,
-        categories: categoriesWithDetails
-      },
-      error: null
-    };
-  }
-  
-  // Use real Supabase data
+  // Real Supabase data
   try {
     // Get recipe details
     const { data: recipe, error: recipeError } = await supabase
