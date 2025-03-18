@@ -17,18 +17,29 @@ import Footer from './components/Footer';
 
 function App() {
   const location = useLocation();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   
-  // Page transition
+  // Page transition - faster and only for subsequent navigations
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
+    // Don't run the transition animation on initial page load
+    const isInitialLoad = sessionStorage.getItem('initialLoad') === null;
+    if (isInitialLoad) {
+      sessionStorage.setItem('initialLoad', 'false');
       setLoading(false);
-    }, 300);
+      return;
+    }
+    
+    setLoading(true);
+    // Reduced transition time from 300ms to 150ms
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 150);
+    
+    return () => clearTimeout(timer);
   }, [location.pathname]);
   
   return (
-    <div className={`flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
+    <div className={`flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 transition-opacity duration-150 ${loading ? 'opacity-80' : 'opacity-100'}`}>
       <Navbar />
       <main className="flex-grow px-4 py-8 md:py-12 mt-16">
         <div className="container mx-auto max-w-7xl">

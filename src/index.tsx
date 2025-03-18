@@ -5,6 +5,7 @@ import App from './App';
 import './index.css';
 import { AuthProvider } from './context/AuthContext';
 
+// Define router first before using it
 const router = createBrowserRouter(
   [
     {
@@ -15,10 +16,30 @@ const router = createBrowserRouter(
   ]
 );
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
+// Optimize browser rendering
+const root = document.getElementById('root') as HTMLElement;
+if (root.hasChildNodes()) {
+  // Use hydration for faster initial render if SSR is enabled later
+  ReactDOM.hydrateRoot(
+    root,
     <AuthProvider>
       <RouterProvider router={router} />
     </AuthProvider>
-  </React.StrictMode>,
-);
+  );
+} else {
+  // Normal client-side rendering
+  ReactDOM.createRoot(root).render(
+    // Only use StrictMode in development
+    import.meta.env.DEV ? (
+      <React.StrictMode>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </React.StrictMode>
+    ) : (
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    )
+  );
+}

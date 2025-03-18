@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { profileService } from '../services/profileService'
 
@@ -8,10 +8,11 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false)
   const location = useLocation()
   const { user, username } = useAuth()
 
-  // Handle scroll effect
+  // Handle scroll effect with passive listener for better performance
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 10) {
@@ -21,7 +22,7 @@ const Navbar = () => {
       }
     }
     
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
@@ -31,38 +32,49 @@ const Navbar = () => {
     setUserMenuOpen(false)
   }, [location])
 
-  // Handle outside click for user menu
-  useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (userMenuOpen && !(e.target as Element).closest('.user-menu-container')) {
-        setUserMenuOpen(false)
-      }
+  // Handle outside click for user menu with memoized handler
+  const handleOutsideClick = useCallback((e: MouseEvent) => {
+    if (userMenuOpen && !(e.target as Element).closest('.user-menu-container')) {
+      setUserMenuOpen(false)
     }
-
+  }, [userMenuOpen])
+  
+  useEffect(() => {
     document.addEventListener('click', handleOutsideClick)
     return () => document.removeEventListener('click', handleOutsideClick)
-  }, [userMenuOpen])
+  }, [handleOutsideClick])
 
-  // Load user avatar
+  // Load user avatar with lazy loading
   useEffect(() => {
-    const loadUserAvatar = async () => {
-      if (!user) {
-        setAvatarUrl(null)
-        return
-      }
-      
-      try {
-        const { data } = await profileService.getProfileByUserId(user.id)
-        if (data?.avatar_url) {
-          setAvatarUrl(data.avatar_url)
-        }
-      } catch (error) {
-        console.error('Error loading avatar:', error)
-      }
+    // Don't fetch avatar immediately on page load
+    if (!user) {
+      setAvatarUrl(null)
+      return;
     }
     
-    loadUserAvatar()
+    // Delay avatar loading slightly to prioritize critical page content
+    const timer = setTimeout(() => {
+      loadUserAvatar();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [user])
+  
+  const loadUserAvatar = async () => {
+    if (!user || isAvatarLoading) return;
+    
+    setIsAvatarLoading(true);
+    try {
+      const { data } = await profileService.getProfileByUserId(user.id)
+      if (data?.avatar_url) {
+        setAvatarUrl(data.avatar_url)
+      }
+    } catch (error) {
+      console.error('Error loading avatar:', error)
+    } finally {
+      setIsAvatarLoading(false);
+    }
+  }
 
   // Check if link is active
   const isActive = (path: string) => location.pathname === path

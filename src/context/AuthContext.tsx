@@ -56,7 +56,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data, error } = await profileService.getProfileByUserId(userId);
       
       if (error) {
-        console.error('Error loading user profile:', error);
         // Set a temporary username based on email if available
         if (user?.email) {
           const emailUsername = user.email.split('@')[0];
@@ -70,12 +69,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (data) {
         // Check if the username is auto-generated and try to correct it
         if (data.username && data.username.startsWith('user_')) {
-          console.log('Detected auto-generated username:', data.username);
-          
           // If we have a user email, create a better username from it
           if (user?.email) {
             const emailBasedUsername = user.email.split('@')[0];
-            console.log('Trying to update to email-based username:', emailBasedUsername);
             
             try {
               // First check if this username is available
