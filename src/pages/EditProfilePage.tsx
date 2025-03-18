@@ -285,6 +285,16 @@ const EditProfilePage = () => {
                 >
                   Upload Picture
                 </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    className="px-4 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                    disabled={isLoading}
+                  >
+                    Remove Picture
+                  </button>
+                )}
               </div>
             </div>
           </div>
