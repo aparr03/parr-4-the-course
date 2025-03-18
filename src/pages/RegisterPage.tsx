@@ -12,6 +12,7 @@ const RegisterPage = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
     password: '',
     confirmPassword: '',
   });
@@ -32,6 +33,22 @@ const RegisterPage = () => {
   };
 
   const validateForm = () => {
+    if (!formData.username.trim()) {
+      setError('Username is required');
+      return false;
+    }
+
+    // Username validation (letters, numbers, underscores only)
+    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      setError('Username can only contain letters, numbers, and underscores');
+      return false;
+    }
+
+    if (formData.username.length < 3 || formData.username.length > 20) {
+      setError('Username must be between 3 and 20 characters');
+      return false;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return false;
@@ -57,8 +74,8 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      const { email, password } = formData;
-      const { error } = await signUp(email, password);
+      const { email, password, username } = formData;
+      const { error } = await signUp(email, password, username);
 
       if (error) {
         throw error;
@@ -110,6 +127,26 @@ const RegisterPage = () => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               placeholder="example@email.com"
             />
+          </div>
+
+          <div>
+            <label htmlFor="username" className="block mb-2 font-medium text-gray-700">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
+              required
+              value={formData.username}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              placeholder="chef_andrew"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Only letters, numbers, and underscores. Between 3-20 characters.
+            </p>
           </div>
 
           <div>

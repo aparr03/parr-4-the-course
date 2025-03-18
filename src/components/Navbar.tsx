@@ -1,13 +1,15 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { profileService } from '../services/profileService'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, username } = useAuth()
 
   // Handle scroll effect
   useEffect(() => {
@@ -41,8 +43,36 @@ const Navbar = () => {
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [userMenuOpen])
 
+  // Load user avatar
+  useEffect(() => {
+    const loadUserAvatar = async () => {
+      if (!user) {
+        setAvatarUrl(null)
+        return
+      }
+      
+      try {
+        const { data } = await profileService.getProfileByUserId(user.id)
+        if (data?.avatar_url) {
+          setAvatarUrl(data.avatar_url)
+        }
+      } catch (error) {
+        console.error('Error loading avatar:', error)
+      }
+    }
+    
+    loadUserAvatar()
+  }, [user])
+
   // Check if link is active
   const isActive = (path: string) => location.pathname === path
+
+  // Get initial for avatar
+  const getInitial = () => {
+    if (username) return username[0].toUpperCase();
+    if (user?.email) return user.email[0].toUpperCase();
+    return '?';
+  };
 
   // Navigation items
   const navigationItems = [
@@ -71,10 +101,21 @@ const Navbar = () => {
           {user ? (
             <button 
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="text-white p-1.5 rounded-full bg-blue-500 hover:bg-blue-400 transition"
+              className="text-white overflow-hidden w-8 h-8 rounded-full hover:opacity-90 transition"
               aria-label="User menu"
             >
-              <span className="text-sm font-medium">{user.email?.[0].toUpperCase()}</span>
+              {avatarUrl ? (
+                <img 
+                  src={avatarUrl} 
+                  alt="Avatar" 
+                  className="w-full h-full object-cover"
+                  onError={() => setAvatarUrl(null)}
+                />
+              ) : (
+                <div className="w-full h-full bg-blue-500 flex items-center justify-center">
+                  <span className="text-sm font-medium">{getInitial()}</span>
+                </div>
+              )}
             </button>
           ) : (
             <Link 
@@ -129,11 +170,22 @@ const Navbar = () => {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center space-x-2 text-white hover:text-blue-100 transition-colors focus:outline-none"
               >
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium">{user.email?.[0].toUpperCase()}</span>
+                <div className="w-8 h-8 overflow-hidden rounded-full">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={() => setAvatarUrl(null)}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-blue-500 flex items-center justify-center">
+                      <span className="text-sm font-medium">{getInitial()}</span>
+                    </div>
+                  )}
                 </div>
                 <span className="hidden lg:inline-block max-w-[160px] truncate">
-                  {user.email}
+                  {username || user.email}
                 </span>
                 <svg 
                   className={`w-4 h-4 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} 
@@ -149,7 +201,7 @@ const Navbar = () => {
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 animate-fade-in-down">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm text-gray-500">Signed in as</p>
-                    <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{username || user.email}</p>
                   </div>
                   <Link
                     to="/profile"
@@ -253,7 +305,7 @@ const Navbar = () => {
         <div className="fixed top-16 right-4 w-56 bg-white rounded-md shadow-lg py-1 z-50 animate-fade-in-down">
           <div className="px-4 py-2 border-b border-gray-100">
             <p className="text-sm text-gray-500">Signed in as</p>
-            <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{username || user.email}</p>
           </div>
           <Link
             to="/profile"

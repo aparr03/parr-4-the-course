@@ -4,13 +4,13 @@ import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { signIn, user } = useAuth();
+  const { signIn, signInWithUsername, user } = useAuth();
 
   const [formVisible, setFormVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    email: '',
+    emailOrUsername: '',
     password: '',
   });
 
@@ -34,12 +34,36 @@ const LoginPage = () => {
     setError(null);
     setIsLoading(true);
 
-    try {
-      const { email, password } = formData;
-      const { error } = await signIn(email, password);
+    // Basic form validation
+    if (!formData.emailOrUsername.trim()) {
+      setError('Please enter your email or username');
+      setIsLoading(false);
+      return;
+    }
 
-      if (error) {
-        throw error;
+    if (!formData.password) {
+      setError('Please enter your password');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { emailOrUsername, password } = formData;
+      let result;
+      
+      // Check if input is email or username
+      const isEmail = emailOrUsername.includes('@');
+      
+      if (isEmail) {
+        // Login with email
+        result = await signIn(emailOrUsername, password);
+      } else {
+        // Login with username
+        result = await signInWithUsername(emailOrUsername, password);
+      }
+      
+      if (result.error) {
+        throw result.error;
       }
 
       // Redirect is handled by the useEffect when user state changes
@@ -60,25 +84,30 @@ const LoginPage = () => {
       <div className="bg-white shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
         {error && (
           <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
-            {error}
+            <p className="font-medium">{error}</p>
+            {error.includes('Incorrect email or password') && (
+              <p className="text-sm mt-1">
+                Make sure you're using the correct credentials. If you've forgotten your password, use the "Forgot password" link.
+              </p>
+            )}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block mb-2 font-medium text-gray-700">
-              Email Address
+            <label htmlFor="emailOrUsername" className="block mb-2 font-medium text-gray-700">
+              Email or Username
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              id="emailOrUsername"
+              name="emailOrUsername"
+              type="text"
+              autoComplete="username"
               required
-              value={formData.email}
+              value={formData.emailOrUsername}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="example@email.com"
+              placeholder="example@email.com or username"
             />
           </div>
 

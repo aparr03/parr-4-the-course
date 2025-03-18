@@ -183,6 +183,15 @@ const RecipeDetailPage = () => {
               </svg>
               <span>Added {new Date(recipe.created_at).toLocaleDateString()}</span>
             </div>
+            
+            {recipe.username && (
+              <div className="flex items-center bg-gray-50 px-4 py-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>Created by {recipe.username}</span>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">

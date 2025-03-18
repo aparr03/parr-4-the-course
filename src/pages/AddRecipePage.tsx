@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { recipeService } from '../services/recipeService';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,10 @@ const AddRecipePage = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const totalSteps = 3;
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Animation effect when component mounts
   useEffect(() => {
@@ -33,14 +37,65 @@ const AddRecipePage = () => {
     });
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    
+    const file = e.target.files[0];
+    
+    // Validate file type and size
+    if (!file.type.match('image.*')) {
+      setError('Please select an image file (png, jpg, jpeg)');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) { // 5MB max
+      setError('Image size should be less than 5MB');
+      return;
+    }
+    
+    setImageFile(file);
+    
+    // Create a preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
     try {
+      let finalRecipe = { ...recipe };
+      
+      // If there's an image file, upload it first
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          const { publicUrl } = await recipeService.uploadRecipeImage(imageFile);
+          finalRecipe.imageUrl = publicUrl;
+          console.log('Image uploaded successfully:', publicUrl);
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          setError('Failed to upload image. Please try again or use an image URL instead.');
+          setLoading(false);
+          setUploadingImage(false);
+          return;
+        }
+        setUploadingImage(false);
+      }
+      
       // Save the recipe to Supabase
-      const { data, error } = await recipeService.createRecipe(recipe);
+      const { data, error } = await recipeService.createRecipe(finalRecipe);
       
       if (error) {
         throw error;
@@ -122,16 +177,69 @@ const AddRecipePage = () => {
             </div>
             
             <div>
-              <label htmlFor="imageUrl" className="block mb-2 font-medium text-gray-700">Image URL (optional)</label>
-              <input
-                id="imageUrl"
-                name="imageUrl"
-                type="url"
-                value={recipe.imageUrl}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="https://example.com/your-image.jpg"
-              />
+              <label htmlFor="imageUrl" className="block mb-2 font-medium text-gray-700">Recipe Image</label>
+              <div className="space-y-3">
+                <input 
+                  ref={fileInputRef}
+                  type="file"
+                  id="imageFile"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                
+                {imagePreview ? (
+                  <div className="mt-2">
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-300">
+                      <img 
+                        src={imagePreview} 
+                        alt="Recipe preview" 
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={triggerFileInput}
+                    className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-blue-500 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm text-gray-600">Click to upload an image</span>
+                    <span className="text-xs text-gray-500 mt-1">(PNG, JPG, JPEG up to 5MB)</span>
+                  </button>
+                )}
+                
+                <div className="flex items-center">
+                  <span className="mr-2 text-gray-600">Or</span>
+                  <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+                
+                <input
+                  id="imageUrl"
+                  name="imageUrl"
+                  type="url"
+                  value={recipe.imageUrl}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                />
+              </div>
             </div>
             
             <div className="flex justify-between pt-4">
@@ -251,24 +359,27 @@ const AddRecipePage = () => {
               </button>
               <button
                 type="submit"
-                className={`px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                disabled={loading}
+                className={`px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2 ${(loading || uploadingImage) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={loading || uploadingImage}
               >
-                {loading ? (
+                {uploadingImage ? (
                   <>
                     <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Saving...</span>
+                    <span>Uploading Image...</span>
+                  </>
+                ) : loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Saving Recipe...</span>
                   </>
                 ) : (
-                  <>
-                    <span>Save Recipe</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </>
+                  <span>Save Recipe</span>
                 )}
               </button>
             </div>
