@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
@@ -23,4 +24,28 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+/build
+/dist
+
+# Docker volumes and temporary files
+/docker/volumes
+.docker
+
+# Testing
+/coverage
+.nyc_output
+
+# Miscellaneous
+.eslintcache
+.npm
+.pnpm-store/
+.history/
+*.tsbuildinfo

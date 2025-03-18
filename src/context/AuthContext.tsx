@@ -17,14 +17,11 @@ type AuthContextType = {
     error: Error | null;
     user: User | null;
   }>;
-  signInWithUsername: (username: string, password: string) => Promise<{
-    error: Error | null;
-    user: User | null;
-  }>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<{ data: any | null; error: Error | null }>;
   updatePassword: (password: string) => Promise<{ data: any | null; error: Error | null }>;
   setUsername: (newUsername: string) => void;
+  deleteAccount: () => Promise<{ success: boolean; error: Error | null }>;
 };
 
 // Create the authentication context
@@ -67,34 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       if (data) {
-        // Check if the username is auto-generated and try to correct it
-        if (data.username && data.username.startsWith('user_')) {
-          // If we have a user email, create a better username from it
-          if (user?.email) {
-            const emailBasedUsername = user.email.split('@')[0];
-            
-            try {
-              // First check if this username is available
-              const { available } = await profileService.isUsernameAvailable(emailBasedUsername);
-              
-              if (available) {
-                // Update the username
-                const updateResult = await profileService.updateProfile(userId, { 
-                  username: emailBasedUsername 
-                });
-                
-                if (!updateResult.error) {
-                  console.log('Updated auto-generated username to:', emailBasedUsername);
-                  setUsername(emailBasedUsername);
-                  return;
-                }
-              }
-            } catch (updateError) {
-              console.error('Error updating auto-generated username:', updateError);
-            }
-          }
-        }
-        
+        // Simply use the username as is, no auto-correction
         setUsername(data.username || null);
       } else {
         // If no data but also no error, use email prefix as fallback
@@ -170,43 +140,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Set the username in memory immediately so the UI shows the right username
       setUsername(username);
-
-      // Add a longer delay to allow any automatic profile creation to complete
-      // This helps us ensure our username update happens after any DB triggers
-      await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Try to get the session
       const { data: { session: _ } } = await supabase.auth.getSession();
       
-      // Start retry mechanism for updating the username
-      let retryCount = 0;
-      const maxRetries = 3;
-      let updateSuccess = false;
-      
-      while (retryCount < maxRetries && !updateSuccess) {
-        try {
-          console.log(`Attempt ${retryCount + 1} to update username to "${username}"`);
-          
-          // Update profile with chosen username
-          const result = await profileService.updateUsernameAfterSignup(data.user.id, username);
-          
-          if (!result.error) {
-            console.log('Username update successful:', result.data);
-            updateSuccess = true;
-          } else {
-            console.error(`Username update failed (attempt ${retryCount + 1}):`, result.error);
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } catch (usernameError) {
-          console.error(`Error updating username (attempt ${retryCount + 1}):`, usernameError);
-        }
+      // Immediate attempt to create the profile with the provided username
+      try {
+        const result = await profileService.createProfile(data.user.id, username);
         
-        retryCount++;
-      }
-      
-      if (!updateSuccess) {
-        console.error('Failed to update username after multiple attempts');
+        if (result.error) {
+          console.error('Failed to create profile with username:', result.error);
+          
+          // Fallback to updateUsernameAfterSignup for compatibility with existing flows
+          const updateResult = await profileService.updateUsernameAfterSignup(data.user.id, username);
+          
+          if (updateResult.error) {
+            console.error('Failed to update username after profile creation:', updateResult.error);
+          }
+        }
+      } catch (profileError) {
+        console.error('Error creating profile:', profileError);
       }
       
       return { user: data.user, error: null };
@@ -243,30 +196,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { 
         user: null, 
         error: new Error('Failed to sign in. Please check your network connection and try again.') 
-      };
-    }
-  };
-
-  // Username-based sign in
-  const signInWithUsername = async (_username: string, _password: string) => {
-    try {
-      // For now, we'll simplify this and just inform users to use email
-      // In a production environment, you would implement a secure way to look up emails
-      // from usernames, possibly using a server function or RLS-protected view
-      
-      return { 
-        user: null, 
-        error: new Error('Username login is coming soon! Please use your email address to login for now.') 
-      };
-      
-      // The complete implementation would look like:
-      // 1. Find user email from username (via secure API or database view)
-      // 2. Use that email with the provided password to sign in
-    } catch (error) {
-      console.error('Error in username sign in:', error);
-      return { 
-        user: null, 
-        error: new Error('An unexpected error occurred. Please try again.') 
       };
     }
   };
@@ -318,6 +247,45 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Delete user account - completely removes the user from Supabase
+  const deleteAccount = async () => {
+    try {
+      if (!user) {
+        return { success: false, error: new Error('No user is logged in') };
+      }
+      
+      // First delete the user's profile data
+      const { error: profileDeleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+      
+      if (profileDeleteError) {
+        console.error('Error deleting user profile:', profileDeleteError);
+        return { success: false, error: profileDeleteError };
+      }
+      
+      // Delete the user's auth data using admin function
+      const { error: userDeleteError } = await supabase.rpc('delete_user');
+      
+      if (userDeleteError) {
+        console.error('Error deleting user:', userDeleteError);
+        return { success: false, error: userDeleteError };
+      }
+      
+      // Sign out the user after successful deletion
+      await signOut();
+      
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error : new Error('An unexpected error occurred during account deletion') 
+      };
+    }
+  };
+
   // Create the context value object
   const value = {
     user,
@@ -326,11 +294,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     username,
     signUp,
     signIn,
-    signInWithUsername,
     signOut,
     resetPasswordForEmail,
     updatePassword,
-    setUsername
+    setUsername,
+    deleteAccount
   };
 
   // Return the provider with the value

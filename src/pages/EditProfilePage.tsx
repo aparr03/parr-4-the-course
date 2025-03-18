@@ -118,7 +118,7 @@ const EditProfilePage = () => {
   const handleRemoveAvatar = async () => {
     if (!user || !avatarUrl) return;
     
-    const confirmed = window.confirm('Are you sure you want to remove your profile picture?');
+    const confirmed = window.confirm('Are you sure you want to revert to the default profile image?');
     if (!confirmed) return;
     
     setIsLoading(true);
@@ -133,10 +133,10 @@ const EditProfilePage = () => {
       await profileService.deleteAvatar(user.id, filePath);
       
       setAvatarUrl(null);
-      setSuccess('Profile picture removed successfully');
+      setSuccess('Profile picture reverted to default image');
     } catch (err: any) {
       console.error('Error removing avatar:', err);
-      setError(err.message || 'Failed to remove profile picture');
+      setError(err.message || 'Failed to revert profile picture');
     } finally {
       setIsLoading(false);
     }
@@ -289,10 +289,10 @@ const EditProfilePage = () => {
                   <button
                     type="button"
                     onClick={handleRemoveAvatar}
-                    className="px-4 py-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                    className="px-4 py-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition"
                     disabled={isLoading}
                   >
-                    Remove Picture
+                    Revert to Default Image
                   </button>
                 )}
               </div>

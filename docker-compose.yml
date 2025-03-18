@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Define shared environment variables
+x-environment: &default-environment
+  VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+  VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+
+services:
+  # Development service
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: parr-4-the-course-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      <<: *default-environment
+      NODE_ENV: development
+    depends_on:
+      - supabase-local
+
+  # Production service (local testing of production build)
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: parr-4-the-course-prod
+    ports:
+      - "8080:80"
+    environment:
+      <<: *default-environment
+      NODE_ENV: production
+    profiles:
+      - production
+
+  # Supabase local for development
+  supabase-local:
+    image: supabase/supabase-local
+    container_name: supabase-local
+    hostname: supabase-local
+    ports:
+      - "54321:54321" # Supabase API
+      - "54322:5432"  # PostgreSQL
+    environment:
+      POSTGRES_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
+      ANON_KEY: ${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24ifQ.625_WdcF3KHqz5amU0x2X5WWHP-OEs_4qj0ssLNHzTs}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSJ9.vI9obAHOGyVVKa3pD--kJlyxp-Z2zV9UUMAhKpNLAcU}
+    volumes:
+      - supabase-data:/var/lib/postgresql/data
+    profiles:
+      - development
+
+  # Test service for running automated tests
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: parr-4-the-course-test
+    environment:
+      <<: *default-environment
+      NODE_ENV: test
+      CI: "true"
+    command: npm test
+    volumes:
+      - .:/app
+      - /app/node_modules
+    profiles:
+      - testing
+
+volumes:
+  supabase-data:
+    name: parr-4-the-course-supabase-data 
