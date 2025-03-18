@@ -14,10 +14,12 @@ import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import { useTheme } from './context/ThemeContext';
 
 function App() {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
   
   // Page transition - faster and only for subsequent navigations
   useEffect(() => {
@@ -39,7 +41,13 @@ function App() {
   }, [location.pathname]);
   
   return (
-    <div className={`flex flex-col min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 transition-opacity duration-150 ${loading ? 'opacity-80' : 'opacity-100'}`}>
+    <div className={`flex flex-col min-h-screen transition-opacity duration-150 ${
+      loading ? 'opacity-80' : 'opacity-100'
+    } ${
+      theme === 'dark' 
+        ? 'bg-gray-900 text-white' 
+        : 'bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900'
+    }`}>
       <Navbar />
       <main className="flex-grow px-4 py-8 md:py-12 mt-16">
         <div className="container mx-auto max-w-7xl">
