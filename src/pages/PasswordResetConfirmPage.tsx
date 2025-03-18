@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const PasswordResetConfirmPage = () => {
   const navigate = useNavigate();
-  const { updatePassword, user } = useAuth();
+  const { updatePassword } = useAuth();
   const [pageVisible, setPageVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

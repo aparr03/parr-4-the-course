@@ -27,7 +27,7 @@ export const recipeService = {
       const filePath = `${Date.now()}_${Math.random().toString(36).substring(2)}`;
       
       // Upload the file to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from(RECIPE_IMAGES_BUCKET)
         .upload(filePath, file, {
           upsert: true,

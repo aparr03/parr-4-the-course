@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const AddRecipePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { } = useAuth();
   const [recipe, setRecipe] = useState({
     title: '',
     ingredients: '',

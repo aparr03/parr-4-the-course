@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { profileService } from '../services/profileService';
@@ -180,7 +180,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Try to get the session
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const { data: { session: _ } } = await supabase.auth.getSession();
       
       // Start retry mechanism for updating the username
       let retryCount = 0;
@@ -252,7 +252,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Username-based sign in
-  const signInWithUsername = async (username: string, password: string) => {
+  const signInWithUsername = async (_username: string, _password: string) => {
     try {
       // For now, we'll simplify this and just inform users to use email
       // In a production environment, you would implement a secure way to look up emails

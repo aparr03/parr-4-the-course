@@ -125,17 +125,18 @@ const EditProfilePage = () => {
     setError(null);
     
     try {
-      // Extract the file path from the URL
+      // Get the file path from the URL
       const urlParts = avatarUrl.split('/');
-      const filePath = urlParts.slice(urlParts.indexOf('avatars')).join('/');
+      const filePath = urlParts[urlParts.length - 1];
       
+      // This method throws errors directly rather than returning them
       await profileService.deleteAvatar(user.id, filePath);
       
       setAvatarUrl(null);
       setSuccess('Profile picture removed successfully');
-    } catch (error) {
-      console.error('Error removing avatar:', error);
-      setError('Failed to remove profile picture');
+    } catch (err: any) {
+      console.error('Error removing avatar:', err);
+      setError(err.message || 'Failed to remove profile picture');
     } finally {
       setIsLoading(false);
     }

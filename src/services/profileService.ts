@@ -122,7 +122,7 @@ export const profileService = {
       logInfo.steps.push({step: 'upload_start', status: 'pending'});
       
       // Upload the file to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from(AVATAR_BUCKET)
         .upload(filePath, file, {
           upsert: true,
