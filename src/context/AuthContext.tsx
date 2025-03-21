@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           .single();
 
         // If there's a 406 error (typically means table doesn't exist), silently handle it
-        if (error && (error.code === '406' || error.status === 406)) {
+        if (error && error.code === '406') {
           return false; // Skip the check if the table doesn't exist
         }
         
