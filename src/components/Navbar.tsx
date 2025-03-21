@@ -288,9 +288,13 @@ const Navbar = () => {
         {/* Title moved to the right */}
         <Link 
           to="/" 
-          className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
+          className="text-2xl font-bold text-white dark:text-white group"
+          style={{ color: 'white' }}
         >
-          Parr-4-The-Course
+          <span className="relative overflow-hidden">
+            Parr-4-The-Course
+            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
+          </span>
         </Link>
 
         {/* Sign in/up links for desktop when not logged in */}
