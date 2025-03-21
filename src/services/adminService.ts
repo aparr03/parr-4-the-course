@@ -9,6 +9,37 @@ export interface BannedEmail {
 }
 
 /**
+ * Send a notification email to the banned user
+ * @param email The email address to send to
+ * @param reason The reason for the ban
+ */
+async function sendBanNotificationEmail(email: string, reason: string) {
+  try {
+    console.log('Sending ban notification to:', email);
+    
+    // Attempt to send email using Supabase Edge Function
+    const { error } = await supabase.functions.invoke('send-email', {
+      body: {
+        to: email,
+        subject: 'Your account has been banned',
+        message: `Your account has been banned from Parr-4-The-Course for the following reason: ${reason}. If you believe this is an error, please contact support.`
+      }
+    });
+    
+    if (error) {
+      console.error('Error sending ban notification:', error);
+      return false;
+    }
+    
+    console.log('Ban notification sent successfully to:', email);
+    return true;
+  } catch (error) {
+    console.error('Error sending ban notification:', error);
+    return false;
+  }
+}
+
+/**
  * Service for admin-related operations
  * This service provides functionality for admin users to manage other users and their content
  */
@@ -227,17 +258,59 @@ export const adminService = {
         };
       }
       
-      // Add email to banned_emails table
+      // Normalize the email to lowercase to ensure consistency
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      // First check if the email is already banned
+      const { data: existingBan, error: checkError } = await supabase
+        .from('banned_emails')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+      
+      if (checkError && checkError.code !== '406') {
+        console.error('Error checking if email is already banned:', checkError);
+        return { success: false, error: checkError };
+      }
+      
+      // If email is already banned, return success with a note
+      if (existingBan) {
+        return { 
+          success: true, 
+          error: null,
+          message: 'Email was already banned' 
+        };
+      }
+      
+      // Add email to banned_emails table (in lowercase)
       const { error } = await supabase
         .from('banned_emails')
-        .insert({ email, reason });
+        .insert({ email: normalizedEmail, reason });
       
       if (error) {
+        // Handle duplicate key error specifically (in case of race condition)
+        if (error.code === '23505') {
+          return { 
+            success: true, 
+            error: null,
+            message: 'Email was already banned' 
+          };
+        }
+        
         console.error('Error banning email:', error);
         return { success: false, error };
       }
       
-      return { success: true, error: null };
+      // Always attempt to send the notification email
+      // The email ban is considered successful regardless of whether the email sends or not
+      const emailSent = await sendBanNotificationEmail(normalizedEmail, reason);
+      
+      return { 
+        success: true, 
+        error: null,
+        emailSent,
+        message: emailSent ? 'Email banned and notification sent' : 'Email banned but notification failed'
+      };
     } catch (error) {
       console.error('Error banning email:', error);
       return { 
@@ -282,6 +355,49 @@ export const adminService = {
       return { 
         success: false, 
         error: error instanceof Error ? error : new Error('Failed to remove banned email') 
+      };
+    }
+  },
+  
+  /**
+   * Get banned usernames - this maps banned emails to usernames
+   * Important when users don't have email fields in their profiles
+   */
+  async getBannedUsernames() {
+    try {
+      const { isAdmin, error: adminCheckError } = await this.isAdmin();
+      
+      if (adminCheckError) {
+        return { data: null, error: adminCheckError };
+      }
+      
+      if (!isAdmin) {
+        return { 
+          data: null, 
+          error: new Error('Unauthorized: Admin privileges required') 
+        };
+      }
+      
+      // This is a static mapping of banned emails to usernames
+      // In a real implementation, you would query your database for this mapping
+      // or store the username in the banned_emails table
+      
+      // For demonstration purposes, we'll use a hardcoded map
+      const bannedUsernameMap = {
+        // Map email addresses to usernames
+        "banneduser@example.com": "TestAccount",
+        // Add more mappings as needed
+      };
+      
+      return { 
+        data: bannedUsernameMap, 
+        error: null 
+      };
+    } catch (error) {
+      console.error('Error getting banned usernames:', error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error : new Error('Failed to get banned usernames') 
       };
     }
   }

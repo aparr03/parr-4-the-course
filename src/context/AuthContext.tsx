@@ -119,30 +119,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
    */
   const isEmailBanned = async (email: string): Promise<boolean> => {
     try {
-      // Try to query the banned_emails table
-      try {
-        const { data, error } = await supabase
-          .from('banned_emails')
-          .select('email')
-          .eq('email', email)
-          .single();
-
-        // If there's a 406 error (typically means table doesn't exist), silently handle it
-        if (error && error.code === '406') {
-          return false; // Skip the check if the table doesn't exist
-        }
-        
-        // For other errors, log but don't break the flow
-        if (error) {
-          console.log('Non-critical error checking banned emails:', error);
-          return false;
-        }
-
-        return !!data;
-      } catch (innerError: any) {
-        // Silently handle any other errors that might occur
+      if (!email) {
+        console.log('No email provided for banned check');
         return false;
       }
+      
+      // Normalize the email (trim and lowercase)
+      const normalizedEmail = email.trim().toLowerCase();
+      console.log(`Checking if email is banned: ${normalizedEmail}`);
+      
+      // Fetch ALL banned emails from the database
+      const { data, error } = await supabase
+        .from('banned_emails')
+        .select('email');
+      
+      if (error) {
+        console.error('Error fetching banned emails:', error);
+        return false;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} banned email(s) from database`);
+      
+      // If no banned emails exist, return false
+      if (!data || data.length === 0) {
+        console.log('No banned emails found in database');
+        return false;
+      }
+      
+      // Log all banned emails for debugging
+      console.log('All banned emails:');
+      data.forEach((entry, index) => {
+        console.log(`${index + 1}. ${entry.email}`);
+      });
+      
+      // Check if the email is in the banned list (case-insensitive check)
+      const isBanned = data.some(entry => {
+        const bannedEmail = (entry.email || '').trim().toLowerCase();
+        const matches = bannedEmail === normalizedEmail;
+        if (matches) {
+          console.log(`MATCH FOUND: "${bannedEmail}" matches "${normalizedEmail}"`);
+        }
+        return matches;
+      });
+      
+      console.log(`Final result: Email "${normalizedEmail}" banned status: ${isBanned}`);
+      return isBanned;
     } catch (err) {
       console.error('Unexpected error in isEmailBanned:', err);
       return false; // Default to not banned on error
@@ -160,14 +181,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     
     try {
       // First check if the email is banned
+      console.log('Checking if email is banned before signup...');
       const isBanned = await isEmailBanned(email);
       
       if (isBanned) {
+        console.log('Signup Rejected: Email is Banned!');
         return { 
           user: null, 
-          error: new Error('Registration blocked: This email address is not allowed') 
+          error: new Error('Registration Blocked: This account is BANNED!') 
         };
       }
+      
+      console.log('Email is not banned, continuing with signup...');
       
       // Then check if the username is available
       const isAvailable = await profileService.isUsernameAvailable(username);
@@ -269,14 +294,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signIn = async (email: string, password: string): Promise<{ user: User | null; error: Error | null }> => {
     try {
       // First check if the email is banned
+      console.log('Checking if email is banned before signin...');
       const isBanned = await isEmailBanned(email);
       
       if (isBanned) {
+        console.log('Signin rejected: Email is banned');
         return { 
           user: null, 
-          error: new Error('Sign-in blocked: This email address is not allowed') 
+          error: new Error('Sign-in Blocked: This account is BANNED!') 
         };
       }
+      
+      console.log('Email is not banned, continuing with signin...');
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,

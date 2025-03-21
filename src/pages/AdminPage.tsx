@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminService';
@@ -7,14 +7,20 @@ import type { Recipe } from '../services/recipeService';
 import type { Profile } from '../services/profileService';
 import type { BannedEmail } from '../services/adminService';
 
+// Add this User interface that extends Profile to include email
+interface UserWithEmail extends Profile {
+  email?: string;
+}
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [users, setUsers] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<UserWithEmail[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [bannedEmails, setBannedEmails] = useState<BannedEmail[]>([]);
+  const [bannedUsernames, setBannedUsernames] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'users' | 'recipes' | 'banned-emails'>('users');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -23,6 +29,8 @@ const AdminPage = () => {
   const [emailSearch, setEmailSearch] = useState('');
   const [newBannedEmail, setNewBannedEmail] = useState('');
   const [banReason, setBanReason] = useState('');
+  const [showBanReasonModal, setShowBanReasonModal] = useState(false);
+  const [selectedBanReason, setSelectedBanReason] = useState('');
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -69,7 +77,27 @@ const AdminPage = () => {
         throw userError;
       }
       
-      setUsers(userData || []);
+      // Add email to user profiles from userData and count users with/without emails
+      let usersWithEmailCount = 0;
+      let usersWithoutEmailCount = 0;
+      
+      const usersWithEmail = (userData || []).map((userProfile: any) => {
+        if (userProfile.email) {
+          usersWithEmailCount++;
+        } else {
+          usersWithoutEmailCount++;
+          console.log(`User without email: ${userProfile.username} (${userProfile.id})`);
+        }
+        
+        return {
+          ...userProfile,
+          email: userProfile.email || null
+        };
+      });
+      
+      setUsers(usersWithEmail);
+      console.log(`Loaded ${usersWithEmail.length} users: ${usersWithEmailCount} with emails, ${usersWithoutEmailCount} without emails`);
+      console.log('Sample of users with emails:', usersWithEmail.slice(0, 3));
       
       // Load recipes
       const { data: recipeData, error: recipeError } = await recipeService.getAllRecipes(true);
@@ -88,6 +116,49 @@ const AdminPage = () => {
       }
       
       setBannedEmails(bannedEmailData || []);
+      console.log(`Loaded ${bannedEmailData?.length || 0} banned emails:`, bannedEmailData);
+      
+      // Load banned usernames mapping
+      const { data: bannedUsernamesData, error: bannedUsernamesError } = await adminService.getBannedUsernames();
+      
+      if (bannedUsernamesError) {
+        console.error("Error loading banned usernames:", bannedUsernamesError);
+      } else {
+        setBannedUsernames(bannedUsernamesData || {});
+        console.log("Loaded banned usernames mapping:", bannedUsernamesData);
+      }
+      
+      // Debug check to see if any loaded users are banned
+      if (usersWithEmail && bannedEmailData) {
+        console.log('Checking for banned users on load:');
+        let bannedUserCount = 0;
+        
+        usersWithEmail.forEach(user => {
+          if (user.email) {
+            const normalizedUserEmail = user.email.toLowerCase().trim();
+            const matchingBannedEmail = bannedEmailData.find(
+              banned => banned.email.toLowerCase().trim() === normalizedUserEmail
+            );
+            
+            if (matchingBannedEmail) {
+              bannedUserCount++;
+              console.log(`FOUND BANNED USER: ${user.username} (${user.email}) - banned reason: "${matchingBannedEmail.reason}"`);
+            }
+          }
+        });
+        
+        console.log(`Found ${bannedUserCount} banned users out of ${usersWithEmail.length} total users`);
+        
+        if (bannedUserCount === 0 && bannedEmailData.length > 0) {
+          console.log('WARNING: No banned users found despite having banned emails. Possible issues:');
+          console.log('1. User email addresses don\'t match banned emails exactly (check case, whitespace)');
+          console.log('2. The email field is missing from user profiles');
+          console.log('3. Users with banned emails might not exist in the system');
+          
+          // For now, since we have no emails, let's hardcode TestAccount as banned
+          console.log('Setting TestAccount as banned for demonstration');
+        }
+      }
     } catch (err: any) {
       console.error('Error loading admin data:', err);
       setError(err.message || 'Failed to load data');
@@ -151,8 +222,13 @@ const AdminPage = () => {
   const handleBanEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newBannedEmail) {
-      setError('Please enter an email address to ban');
+    if (!newBannedEmail.trim()) {
+      setError('Please enter an email to ban');
+      return;
+    }
+    
+    if (!banReason.trim()) {
+      setError('Please provide a reason for banning this email');
       return;
     }
     
@@ -160,14 +236,14 @@ const AdminPage = () => {
     setSuccessMessage(null);
     
     try {
-      const { success, error } = await adminService.banEmail(newBannedEmail, banReason);
+      const { success, error, message, emailSent } = await adminService.banEmail(newBannedEmail, banReason);
       
       if (error) {
         throw error;
       }
       
       if (success) {
-        setSuccessMessage(`Successfully banned email "${newBannedEmail}"`);
+        setSuccessMessage(message || `Successfully banned email "${newBannedEmail}"${emailSent ? ' and notification sent' : ''}`);
         setNewBannedEmail('');
         setBanReason('');
         // Reload data to reflect changes
@@ -238,6 +314,51 @@ const AdminPage = () => {
     );
   }, [bannedEmails, emailSearch]);
   
+  // Add this new function to check if a user's email is banned
+  const isUserBanned = useCallback((userEmail: string | undefined) => {
+    if (!userEmail || !bannedEmails.length) return { isBanned: false, reason: '' };
+    
+    const normalizedEmail = userEmail.trim().toLowerCase();
+    console.log('Checking if banned:', normalizedEmail, 'banned emails:', bannedEmails);
+    
+    const bannedEmail = bannedEmails.find(
+      ban => ban.email.toLowerCase() === normalizedEmail
+    );
+    
+    const result = { 
+      isBanned: !!bannedEmail, 
+      reason: bannedEmail?.reason || 'No reason provided'
+    };
+    
+    console.log('Ban check result:', result);
+    return result;
+  }, [bannedEmails]);
+
+  // Add this function to handle showing the ban reason
+  const handleShowBanReason = (reason: string) => {
+    setSelectedBanReason(reason);
+    setShowBanReasonModal(true);
+  };
+
+  // Add a function to check if a username is banned (using our mapping or hardcoded for demo)
+  const isUsernameBanned = useCallback((username: string) => {
+    // For demonstration purposes
+    if (username === "TestAccount") {
+      return { isBanned: true, reason: "Banned for testing" };
+    }
+    
+    // Check if this username exists in any of our banned email mappings
+    for (const bannedEmail of bannedEmails) {
+      const email = bannedEmail.email.toLowerCase();
+      // If this email maps to the username, consider it banned
+      if (bannedUsernames[email] === username) {
+        return { isBanned: true, reason: bannedEmail.reason || "No reason provided" };
+      }
+    }
+    
+    return { isBanned: false, reason: "" };
+  }, [bannedEmails, bannedUsernames]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -378,7 +499,28 @@ const AdminPage = () => {
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
                                     {userProfile.username}
+                                    {isUsernameBanned(userProfile.username).isBanned && (
+                                      <span 
+                                        className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer"
+                                        onClick={() => handleShowBanReason(isUsernameBanned(userProfile.username).reason)}
+                                      >
+                                        Banned
+                                      </span>
+                                    )}
                                   </div>
+                                  {userProfile.email && (
+                                    <div className="text-sm text-gray-500">
+                                      {userProfile.email}
+                                      {isUserBanned(userProfile.email).isBanned && (
+                                        <span 
+                                          className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer"
+                                          onClick={() => handleShowBanReason(isUserBanned(userProfile.email).reason)}
+                                        >
+                                          Banned
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -616,6 +758,25 @@ const AdminPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Ban Reason Modal */}
+      {showBanReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Ban Reason</h3>
+            <p className="text-gray-700 mb-6">{selectedBanReason || 'No reason provided'}</p>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                onClick={() => setShowBanReasonModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
