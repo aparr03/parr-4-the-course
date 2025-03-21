@@ -1,9 +1,9 @@
 version: '3.8'
 
-# Define shared environment variables
+# Define shared environment variables with hosted Supabase
 x-environment: &default-environment
-  VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-  VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+  VITE_SUPABASE_URL: https://fkbmarrbkyshruzwyytn.supabase.co
+  VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrYm1hcnJia3lzaHJ1end5eXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIyNTk2ODQsImV4cCI6MjA1NzgzNTY4NH0.gTPBLkYHliyAhlsSZtulf8ud0f1lNx4-dTbxflA_b4U
 
 services:
   # Development service
@@ -21,43 +21,45 @@ services:
     environment:
       <<: *default-environment
       NODE_ENV: development
-    depends_on:
-      - supabase-local
+    profiles:
+      - development
 
-  # Production service (local testing of production build)
+  # Production service
   app-prod:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
+      args:
+        - NODE_ENV=production
     container_name: parr-4-the-course-prod
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
     environment:
       <<: *default-environment
       NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     profiles:
       - production
 
-  # Supabase local for development
-  supabase-local:
-    image: supabase/supabase-local
-    container_name: supabase-local
-    hostname: supabase-local
-    ports:
-      - "54321:54321" # Supabase API
-      - "54322:5432"  # PostgreSQL
-    environment:
-      POSTGRES_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
-      ANON_KEY: ${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24ifQ.625_WdcF3KHqz5amU0x2X5WWHP-OEs_4qj0ssLNHzTs}
-      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSJ9.vI9obAHOGyVVKa3pD--kJlyxp-Z2zV9UUMAhKpNLAcU}
-    volumes:
-      - supabase-data:/var/lib/postgresql/data
-    profiles:
-      - development
-
-  # Test service for running automated tests
+  # Test service
   test:
     build:
       context: .
@@ -68,7 +70,8 @@ services:
       <<: *default-environment
       NODE_ENV: test
       CI: "true"
-    command: npm test
+    command: >
+      sh -c "npm test -- --coverage --watchAll=false"
     volumes:
       - .:/app
       - /app/node_modules

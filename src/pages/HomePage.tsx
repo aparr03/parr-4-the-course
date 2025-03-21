@@ -40,7 +40,7 @@ const HomePage = () => {
         ref={heroRef}
         className="mx-auto mb-12 text-center"
       >
-        <h1 className="text-5xl font-extrabold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500">
+        <h1 className="text-5xl font-extrabold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 py-1 leading-relaxed">
           Discover Amazing Recipes
         </h1>
         <p className="max-w-2xl mx-auto text-lg text-gray-600 mb-8">

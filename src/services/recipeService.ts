@@ -76,48 +76,66 @@ export const recipeService = {
   },
   
   /**
-   * Get all recipes from the database
+   * Get all recipes
+   * If isAdmin is true, returns all recipes without limit
    */
-  async getAllRecipes() {
-    // First, get all recipes
-    const { data: recipes, error } = await supabase
-      .from('recipes')
-      .select('*')
-      .order('created_at', { ascending: false });
+  async getAllRecipes(isAdmin = false) {
+    try {
+      // Query recipes table
+      let query = supabase
+        .from('recipes')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      // Apply limit for non-admin users
+      if (!isAdmin) {
+        query = query.limit(50);
+      }
       
-    if (error) {
-      return { data: null, error };
-    }
-    
-    // If we have recipes, fetch usernames for each recipe
-    if (recipes && recipes.length > 0) {
-      // Get unique user IDs from recipes
+      const { data: recipes, error } = await query;
+      
+      if (error) {
+        return { data: null, error };
+      }
+      
+      if (!recipes || recipes.length === 0) {
+        return { data: [], error: null };
+      }
+      
+      // Get unique user IDs
       const userIds = [...new Set(recipes.map(recipe => recipe.user_id))];
       
-      // Fetch profiles for these users
+      // Fetch all usernames in a single query
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username')
         .in('id', userIds);
         
-      if (!profilesError && profiles) {
-        // Create a map of user_id -> username
-        const usernameMap = profiles.reduce((map, profile) => {
-          map[profile.id] = profile.username;
-          return map;
-        }, {} as Record<string, string>);
-        
-        // Add username to each recipe
-        const recipesWithUsernames = recipes.map(recipe => ({
-          ...recipe,
-          username: usernameMap[recipe.user_id] || null
-        }));
-        
-        return { data: recipesWithUsernames, error: null };
+      if (profilesError) {
+        console.error('Error fetching usernames:', profilesError);
+        return { data: recipes, error: null };
       }
+      
+      // Create a map of user_id -> username for efficient lookup
+      const usernameMap = profiles?.reduce((map, profile) => {
+        map[profile.id] = profile.username;
+        return map;
+      }, {} as {[key: string]: string}) || {};
+      
+      // Add username to each recipe
+      const recipesWithUsernames = recipes.map(recipe => ({
+        ...recipe,
+        username: usernameMap[recipe.user_id] || 'Unknown User'
+      }));
+      
+      return { data: recipesWithUsernames, error: null };
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error : new Error('An unexpected error occurred') 
+      };
     }
-    
-    return { data: recipes, error };
   },
   
   /**

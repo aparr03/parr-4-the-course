@@ -85,16 +85,45 @@ const RegisterPage = () => {
 
     try {
       const { email, password, username } = formData;
-      const { error } = await signUp(email, password, username);
+      
+      // Trim the username to prevent whitespace issues
+      const trimmedUsername = username.trim();
+      
+      // Additional username validation check
+      if (trimmedUsername.toLowerCase().startsWith('user_')) {
+        setError('Username cannot start with "user_" as this is reserved');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log(`Registering with username: ${trimmedUsername}`);
+      
+      const { error, user: newUser } = await signUp(email, password, trimmedUsername);
 
       if (error) {
         throw error;
       }
 
-      setSuccess('Registration successful! Please check your email to confirm your account.');
+      // If registration was successful
+      if (newUser) {
+        console.log('Registration successful:', newUser.id);
+        
+        setSuccess('Registration successful! Please check your email to confirm your account.');
+        
+        // Optional: monitor username to ensure it was set correctly (for debugging)
+        import('../services/profileService').then(({ profileService }) => {
+          setTimeout(() => {
+            profileService.monitorUsername(newUser.id, 'post-registration');
+          }, 2000);
+        });
+      } else {
+        // This case should rarely happen, but handle it anyway
+        setError('Registration was processed, but user account creation failed. Please try again.');
+      }
       
       // We don't navigate here as user needs to confirm email
     } catch (error: any) {
+      console.error('Registration error:', error);
       setError(error.message || 'An error occurred during registration');
     } finally {
       setIsLoading(false);

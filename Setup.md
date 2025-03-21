@@ -113,14 +113,14 @@ docker-compose --profile production up app-prod
 ```
 
 This will build an optimized production version and serve it using Nginx.
-Access the production build at http://localhost:8080
+Access the production build at http://localhost:80
 
 ### Production Deployment
 
 For production deployment:
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.yml up -d
 ```
 
 ## Docker Architecture
@@ -137,7 +137,6 @@ The project uses a multi-stage Dockerfile to optimize for different environments
 
 ### Environment Management
 
-- `.env.example`: Template for environment variables
 - `.env`: Local development environment variables
 - `.env.test`: Testing environment variables
 
@@ -190,3 +189,54 @@ docker-compose down -v
 ## License
 
 [MIT](LICENSE)
+
+## Admin Features
+
+This application includes an admin dashboard with user management, recipe moderation, and email ban functionality.
+
+### Accessing the Admin Dashboard
+
+The admin dashboard is only accessible to users with admin privileges. Admin status is stored in the `is_admin` field of the user's profile.
+
+To access the admin dashboard:
+1. Log in with an admin account
+2. Navigate to `/admin` in your browser
+
+### Admin Dashboard Features
+
+The admin dashboard includes three main tabs:
+
+#### 1. User Management
+- View all registered users
+- Delete user accounts (except your own admin account)
+- See user creation dates
+
+#### 2. Recipe Management
+- View all recipes in the system
+- Delete inappropriate or violating content
+- Filter recipes by title or username
+
+#### 3. Banned Emails
+- Ban email addresses to prevent registration and login
+- Add optional reason for the ban
+- Remove emails from the banned list
+- Search and filter banned emails
+
+### Email Ban System
+
+The banned emails feature allows administrators to:
+
+1. **Prevent Registration**: Banned emails cannot create new accounts
+2. **Block Sign-in**: Existing accounts with banned emails cannot sign in
+3. **Track Ban Reasons**: Admins can add notes about why an email was banned
+
+### Setting Up Admin Access
+
+To set up admin access in Supabase:
+
+1. Connect to your Supabase database or run the SQL in the Supabase dashboard
+2. Execute the SQL commands in `supabase-admin-setup.sql`
+3. Set a user as admin with:
+   ```sql
+   UPDATE profiles SET is_admin = true WHERE id = 'user-uuid-here';
+   ```

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { profileService } from '../services/profileService'
+import { adminService } from '../services/adminService'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -10,8 +11,9 @@ const Navbar = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [isAvatarLoading, setIsAvatarLoading] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const location = useLocation()
-  const { user, username } = useAuth()
+  const { user, username, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
 
   // Handle scroll effect with passive listener for better performance
@@ -51,12 +53,14 @@ const Navbar = () => {
     // Don't fetch avatar immediately on page load
     if (!user) {
       setAvatarUrl(null)
+      setIsAdmin(false)
       return;
     }
     
     // Delay avatar loading slightly to prioritize critical page content
     const timer = setTimeout(() => {
       loadUserAvatar();
+      checkAdminStatus();
     }, 100);
     
     return () => clearTimeout(timer);
@@ -77,6 +81,18 @@ const Navbar = () => {
       setIsAvatarLoading(false);
     }
   }
+  
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { isAdmin } = await adminService.isAdmin();
+      setIsAdmin(isAdmin);
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    }
+  };
 
   // Check if link is active
   const isActive = (path: string) => location.pathname === path
@@ -162,13 +178,21 @@ const Navbar = () => {
                   >
                     Your Profile
                   </Link>
-                  <div className="border-t border-gray-100 dark:border-gray-700">
+                  {isAdmin && (
                     <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      to="/admin"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
+                  <div className="border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={() => signOut()}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       Sign out
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}
@@ -264,12 +288,9 @@ const Navbar = () => {
         {/* Title moved to the right */}
         <Link 
           to="/" 
-          className="text-2xl font-bold text-white group"
+          className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
         >
-          <span className="relative overflow-hidden">
-            Parr-4-The-Course
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-white transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
-          </span>
+          Parr-4-The-Course
         </Link>
 
         {/* Sign in/up links for desktop when not logged in */}
@@ -322,12 +343,20 @@ const Navbar = () => {
               >
                 Your Profile
               </Link>
-              <Link 
-                to="/profile"
-                className="px-4 py-2 rounded-md border border-white/30 text-white transition-colors duration-300 hover:bg-white/10 dark:hover:bg-gray-700"
+              {isAdmin && (
+                <Link 
+                  to="/admin"
+                  className="px-4 py-2 rounded-md transition-colors duration-300 text-white/80 hover:bg-white/10 dark:hover:bg-gray-700 hover:text-white"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
+              <button 
+                onClick={() => signOut()}
+                className="px-4 py-2 rounded-md border border-white/30 text-white transition-colors duration-300 hover:bg-white/10 dark:hover:bg-gray-700 w-full text-left"
               >
                 Sign out
-              </Link>
+              </button>
             </>
           ) : (
             <>
@@ -361,13 +390,21 @@ const Navbar = () => {
           >
             Your Profile
           </Link>
-          <div className="border-t border-gray-100 dark:border-gray-700">
+          {isAdmin && (
             <Link
-              to="/profile"
-              className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              to="/admin"
+              className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              Admin Dashboard
+            </Link>
+          )}
+          <div className="border-t border-gray-100 dark:border-gray-700">
+            <button
+              onClick={() => signOut()}
+              className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               Sign out
-            </Link>
+            </button>
           </div>
         </div>
       )}

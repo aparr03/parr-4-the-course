@@ -11,6 +11,7 @@ import EditProfilePage from './pages/EditProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import PasswordResetRequestPage from './pages/PasswordResetRequestPage';
 import PasswordResetConfirmPage from './pages/PasswordResetConfirmPage';
+import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -80,6 +81,13 @@ function App() {
             <Route path="/edit-recipe/:id" element={
               <ProtectedRoute>
                 <AddRecipePage />
+              </ProtectedRoute>
+            } />
+            
+            {/* Admin route */}
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             } />
             

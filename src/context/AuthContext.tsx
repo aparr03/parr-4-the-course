@@ -114,88 +114,182 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
   }, []);
 
-  // Handle user sign-up
-  const signUp = async (email: string, password: string, username: string) => {
+  /**
+   * Check if an email is in the banned list
+   */
+  const isEmailBanned = async (email: string): Promise<boolean> => {
     try {
-      // First check if the username is available
-      const { available } = await profileService.isUsernameAvailable(username);
+      // Try to query the banned_emails table
+      try {
+        const { data, error } = await supabase
+          .from('banned_emails')
+          .select('email')
+          .eq('email', email)
+          .single();
+
+        // If there's a 406 error (typically means table doesn't exist), silently handle it
+        if (error && (error.code === '406' || error.status === 406)) {
+          return false; // Skip the check if the table doesn't exist
+        }
+        
+        // For other errors, log but don't break the flow
+        if (error) {
+          console.log('Non-critical error checking banned emails:', error);
+          return false;
+        }
+
+        return !!data;
+      } catch (innerError: any) {
+        // Silently handle any other errors that might occur
+        return false;
+      }
+    } catch (err) {
+      console.error('Unexpected error in isEmailBanned:', err);
+      return false; // Default to not banned on error
+    }
+  };
+
+  /**
+   * Sign up with email and password
+   */
+  const signUp = async (email: string, password: string, username: string): Promise<{ user: User | null; error: Error | null }> => {
+    // Input validation
+    if (!email || !password || !username) {
+      return { user: null, error: new Error('Email, password, and username are required') };
+    }
+    
+    try {
+      // First check if the email is banned
+      const isBanned = await isEmailBanned(email);
       
-      if (!available) {
+      if (isBanned) {
+        return { 
+          user: null, 
+          error: new Error('Registration blocked: This email address is not allowed') 
+        };
+      }
+      
+      // Then check if the username is available
+      const isAvailable = await profileService.isUsernameAvailable(username);
+      
+      if (!isAvailable) {
         return { user: null, error: new Error('Username is already taken') };
       }
       
-      // Create auth user
+      // Try to sign up the user with Supabase
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: {
+            username // Store username in auth metadata
+          }
+        }
       });
       
+      // Handle errors from Supabase Auth
       if (error) {
         return { user: null, error };
       }
       
-      if (!data.user) {
-        return { user: null, error: new Error('User creation failed') };
-      }
-
-      // Set the username in memory immediately so the UI shows the right username
-      setUsername(username);
-      
-      // Try to get the session
-      const { data: { session: _ } } = await supabase.auth.getSession();
-      
-      // Immediate attempt to create the profile with the provided username
-      try {
-        const result = await profileService.createProfile(data.user.id, username);
+      // If we get here, the user was created successfully
+      if (data.user) {
+        // CRITICAL IMPROVEMENT: Direct profile creation without checking first
+        // This bypasses potential race conditions with the auth system
+        console.log(`[AUTH_DEBUG] Creating user profile immediately with username: ${username}`);
         
-        if (result.error) {
-          console.error('Failed to create profile with username:', result.error);
+        let profileCreated = false;
+        
+        // Wait for 1 second to ensure the database trigger has executed
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Try using our secure RPC function first - this is the most reliable way
+        try {
+          const { success, error } = await profileService.setUsernameSecurely(data.user.id, username);
           
-          // Fallback to updateUsernameAfterSignup for compatibility with existing flows
-          const updateResult = await profileService.updateUsernameAfterSignup(data.user.id, username);
-          
-          if (updateResult.error) {
-            console.error('Failed to update username after profile creation:', updateResult.error);
+          if (success) {
+            console.log(`[AUTH_DEBUG] Username set securely via RPC function: ${username}`);
+            profileCreated = true;
+          } else if (error) {
+            // Only log if there's an actual error object
+            console.log(`[AUTH_DEBUG] Secure username setting failed:`, error);
+          }
+        } catch (secureError) {
+          // Silently catch errors from the RPC function - it may not exist yet
+        }
+        
+        // If that failed, try the other approaches as fallback
+        if (!profileCreated) {
+          // Try inserting the profile directly - silently catch 401/42501 errors (RLS policy violations) 
+          try {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({ 
+                id: data.user.id, 
+                username,
+                created_at: new Date().toISOString()
+              });
+            
+            if (!insertError) {
+              console.log(`[AUTH_DEBUG] Profile created successfully with username: ${username}`);
+              profileCreated = true;
+            } else if (insertError.code !== '42501' && insertError.code !== '401') {
+              // Only log errors other than RLS violations
+              console.log(`[AUTH_DEBUG] Profile creation failed:`, insertError);
+            }
+          } catch (profileError) {
+            // Silently catch direct insert errors
           }
         }
-      } catch (profileError) {
-        console.error('Error creating profile:', profileError);
+        
+        // As a final fallback, use the update function from profileService
+        if (!profileCreated) {
+          try {
+            console.log(`[AUTH_DEBUG] Final fallback: using updateUsernameAfterSignup`);
+            await profileService.updateUsernameAfterSignup(data.user.id, username);
+          } catch (error) {
+            console.error(`[AUTH_DEBUG] Error during username update fallback:`, error);
+          }
+        }
+        
+        return { user: data.user, error: null };
       }
       
-      return { user: data.user, error: null };
+      return { user: null, error: new Error('Unknown error during signup') };
     } catch (error) {
-      console.error('Error during sign-up:', error);
-      return { user: null, error: error instanceof Error ? error : new Error('Sign-up failed') };
+      console.error('Unexpected error during signup:', error);
+      return { user: null, error: error instanceof Error ? error : new Error('Unknown error during signup') };
     }
   };
 
-  // Standard email sign in function
-  const signIn = async (email: string, password: string) => {
+  /**
+   * Sign in with email and password
+   */
+  const signIn = async (email: string, password: string): Promise<{ user: User | null; error: Error | null }> => {
     try {
+      // First check if the email is banned
+      const isBanned = await isEmailBanned(email);
+      
+      if (isBanned) {
+        return { 
+          user: null, 
+          error: new Error('Sign-in blocked: This email address is not allowed') 
+        };
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) {
-        // Translate Supabase errors to more user-friendly messages
-        if (error.message.includes('Invalid login credentials')) {
-          return { 
-            user: null, 
-            error: new Error('Incorrect email or password. Please try again.') 
-          };
-        }
-        
-        // Return the original error if it's not one we're handling specifically
-        return { user: null, error };
-      }
+      if (error) return { user: null, error };
       
-      return { user: data?.user || null, error: null };
-    } catch (error: any) {
-      console.error('Sign in error:', error);
+      return { user: data.user, error: null };
+    } catch (error) {
       return { 
         user: null, 
-        error: new Error('Failed to sign in. Please check your network connection and try again.') 
+        error: error instanceof Error ? error : new Error('Unknown error during sign in')
       };
     }
   };
