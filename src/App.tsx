@@ -29,6 +29,12 @@ function App() {
       // Set loading for just 100ms (subtle effect) for a bit of visual indication of page change
       setLoading(true);
       setTimeout(() => setLoading(false), 100);
+      
+      // Scroll to the top of the page when navigating to a new route
+      window.scrollTo({
+        top: 0,
+        behavior: 'instant' // Use 'instant' instead of 'smooth' to avoid visual jump
+      });
     };
     
     // Execute only if there's already content (not first load)
