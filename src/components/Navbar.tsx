@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext'
 import { profileService } from '../services/profileService'
 import { adminService } from '../services/adminService'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '../lib/supabase'
 
 // Create memoized version of NavLink to avoid unnecessary re-renders
 const MemoizedNavLink = memo(({ 
@@ -52,12 +51,13 @@ const Navbar = () => {
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          if (window.scrollY > 10) {
+          const currentScrollY = window.scrollY;
+          if (currentScrollY > 10) {
             setScrolled(true)
           } else {
             setScrolled(false)
           }
-          lastScrollY = window.scrollY;
+          lastScrollY = currentScrollY;
           ticking = false;
         });
         ticking = true;
