@@ -45,7 +45,6 @@ const Navbar = () => {
   
   // Handle scroll effect with throttling and debouncing for performance
   useEffect(() => {
-    let lastScrollY = window.scrollY;
     let ticking = false;
     
     const handleScroll = () => {
@@ -57,7 +56,6 @@ const Navbar = () => {
           } else {
             setScrolled(false)
           }
-          lastScrollY = currentScrollY;
           ticking = false;
         });
         ticking = true;
