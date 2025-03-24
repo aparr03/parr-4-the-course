@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
+import { recipeService, Recipe } from '../services/recipeService';
+import { createSlug } from '../utils/slugify';
 
 const ProfilePage = () => {
   const { user, signOut, username, setUsername, deleteAccount } = useAuth();
@@ -15,13 +17,17 @@ const ProfilePage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [isRecipesLoading, setIsRecipesLoading] = useState(true);
 
   useEffect(() => {
     // Immediately render the page structure without waiting for profile data
     if (user) {
       loadProfileData();
+      loadUserRecipes();
     } else {
       setProfileLoading(false);
+      setIsRecipesLoading(false);
     }
   }, [user]);
 
@@ -47,6 +53,28 @@ const ProfilePage = () => {
       console.error('Error loading profile data:', error);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const loadUserRecipes = async () => {
+    if (!user) return;
+    
+    setIsRecipesLoading(true);
+    try {
+      const { data, error } = await recipeService.getUserRecipes();
+      
+      if (error) {
+        console.error('Error loading user recipes:', error);
+        return;
+      }
+      
+      if (data) {
+        setRecipes(data);
+      }
+    } catch (error) {
+      console.error('Error loading user recipes:', error);
+    } finally {
+      setIsRecipesLoading(false);
     }
   };
 
@@ -300,13 +328,13 @@ const ProfilePage = () => {
             <div>
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Account Actions</h2>
               <div className="space-y-4">
-                <Link to="/forgot-password" className="block w-full px-6 py-3 bg-white dark:bg-blue-800 border border-gray-300 dark:border-blue-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 text-left flex justify-between items-center shadow-sm dark:shadow-blue-900/30">
-                <span className="font-semibold text-inherit">Change Password</span>
+                <Link to="/forgot-password" className="block w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 text-left flex justify-between items-center shadow-sm dark:shadow-blue-900/30">
+                  <span className="font-semibold text-inherit">Change Password</span>
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
                   </svg>
                 </Link>
-                <Link to="/edit-profile" className="block w-full px-6 py-3 bg-white dark:bg-blue-800 border border-gray-300 dark:border-blue-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 text-left flex justify-between items-center shadow-sm dark:shadow-blue-900/30">
+                <Link to="/edit-profile" className="block w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 text-left flex justify-between items-center shadow-sm dark:shadow-blue-900/30">
                   <span className="font-semibold text-inherit">Update Profile</span>
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
@@ -331,16 +359,72 @@ const ProfilePage = () => {
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8">
         <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Your Recipes</h2>
-        <div className="p-6 text-center text-gray-500 dark:text-gray-300">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-          </svg>
-          <p className="text-xl font-medium mb-2 dark:text-white">No recipes yet</p>
-          <p className="mb-4 dark:text-gray-300">You haven't created any recipes yet. Start adding your favorite recipes!</p>
-          <Link to="/add-recipe" className="px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 inline-block">
-            Create Recipe
-          </Link>
-        </div>
+        
+        {isRecipesLoading ? (
+          <div className="p-6 text-center">
+            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">Loading your recipes...</p>
+          </div>
+        ) : recipes.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recipes.map((recipe) => (
+              <Link 
+                key={recipe.id} 
+                to={`/recipes/${createSlug(recipe.title)}`}
+                className="bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-1"
+              >
+                <div className="h-40 bg-gray-200 dark:bg-gray-600 relative overflow-hidden">
+                  {recipe.imageUrl ? (
+                    <img 
+                      src={recipe.imageUrl} 
+                      alt={recipe.title} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-100 dark:bg-blue-900">
+                      <svg className="w-12 h-12 text-blue-500 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2 truncate">{recipe.title}</h3>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-1 text-gray-500 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <span className="dark:text-gray-200">{recipe.time}</span>
+                    </div>
+                    <span className="text-gray-400 dark:text-gray-500">•</span>
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 mr-1 text-gray-500 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                      </svg>
+                      <span className="dark:text-gray-200">{recipe.servings}</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+            <svg className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            <p className="text-xl font-medium mb-2 dark:text-white">No recipes yet</p>
+            <p className="mb-4 dark:text-gray-400">You haven't created any recipes yet. Start adding your favorite recipes!</p>
+            <Link to="/add-recipe" className="px-6 py-3 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 inline-block">
+              Create Recipe
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Delete Account Confirmation Modal */}

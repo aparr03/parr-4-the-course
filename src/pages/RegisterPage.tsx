@@ -134,10 +134,10 @@ const RegisterPage = () => {
     <div className={`max-w-md mx-auto p-4 mt-20 transition-opacity duration-500 ${formVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold mb-2 text-blue-600">Create an Account</h1>
-        <p className="text-gray-600">Join our community of food enthusiasts</p>
+        <p className="text-white">Join our community of food enthusiasts</p>
       </div>
 
-      <div className="bg-white shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
         {error && (
           <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
             {error}
@@ -152,7 +152,7 @@ const RegisterPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block mb-2 font-medium text-gray-700">
+            <label htmlFor="email" className="block mb-2 font-medium text-gray-700 dark:text-white">
               Email Address
             </label>
             <input
@@ -169,7 +169,7 @@ const RegisterPage = () => {
           </div>
 
           <div>
-            <label htmlFor="username" className="block mb-2 font-medium text-gray-700">
+            <label htmlFor="username" className="block mb-2 font-medium text-gray-700 dark:text-white">
               Username
             </label>
             <input
@@ -183,13 +183,13 @@ const RegisterPage = () => {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               placeholder="chef_andrew"
             />
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Only letters, numbers, and underscores. Between 3-20 characters.
             </p>
           </div>
 
           <div>
-            <label htmlFor="password" className="block mb-2 font-medium text-gray-700">
+            <label htmlFor="password" className="block mb-2 font-medium text-gray-700 dark:text-white">
               Password
             </label>
             <div className="relative">
@@ -222,13 +222,13 @@ const RegisterPage = () => {
                 )}
               </button>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Password must be at least 6 characters
             </p>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block mb-2 font-medium text-gray-700">
+            <label htmlFor="confirmPassword" className="block mb-2 font-medium text-gray-700 dark:text-white">
               Confirm Password
             </label>
             <div className="relative">
@@ -278,16 +278,16 @@ const RegisterPage = () => {
                   <span>Creating Account...</span>
                 </>
               ) : (
-                <span>Create Account</span>
+                <span className="dark:text-white">Create Account</span>
               )}
             </button>
           </div>
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-600 hover:text-blue-500 font-medium">
+            <Link to="/login" className="text-blue-500 hover:text-blue-400 font-medium">
               Sign in
             </Link>
           </p>

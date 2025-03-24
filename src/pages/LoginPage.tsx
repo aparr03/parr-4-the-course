@@ -71,14 +71,18 @@ const LoginPage = () => {
   return (
     <div className={`max-w-md mx-auto p-4 mt-20 transition-opacity duration-500 ${formVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="mb-10 text-center">
-        <h1 className="text-3xl font-bold mb-2 text-blue-600">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to access your account</p>
+        <h1 className="text-3xl font-bold mb-2 text-blue-600 dark:text-blue-400">Welcome Back</h1>
+        <p className="text-gray-600 dark:text-gray-300">Sign in to access your account</p>
       </div>
 
-      <div className="bg-white shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
         {error && (
-          <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
-            <p className="font-medium">{error}</p>
+          <div className={`p-4 rounded-lg mb-6 ${
+            error.includes('BANNED') 
+              ? 'bg-red-600 text-white' 
+              : 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-300'
+          }`}>
+            <p className={`font-medium ${error.includes('BANNED') ? 'text-white' : ''}`}>{error}</p>
             {error.includes('Incorrect email or password') && (
               <p className="text-sm mt-1">
                 Make sure you're using the correct credentials. If you've forgotten your password, use the "Forgot password" link.
@@ -89,7 +93,7 @@ const LoginPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block mb-2 font-medium text-gray-700">
+            <label htmlFor="email" className="block mb-2 font-medium text-gray-700 dark:text-gray-200">
               Email Address
             </label>
             <input
@@ -100,17 +104,17 @@ const LoginPage = () => {
               required
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors dark:bg-gray-700 dark:text-white"
               placeholder="example@email.com"
             />
           </div>
 
           <div>
             <div className="flex justify-between mb-2">
-              <label htmlFor="password" className="font-medium text-gray-700">
+              <label htmlFor="password" className="font-medium text-gray-700 dark:text-gray-200">
                 Password
               </label>
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
+              <Link to="/forgot-password" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
                 Forgot password?
               </Link>
             </div>
@@ -123,13 +127,13 @@ const LoginPage = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors dark:bg-gray-700 dark:text-white"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 focus:outline-none"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 dark:text-gray-300 focus:outline-none"
               >
                 {showPassword ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -161,16 +165,16 @@ const LoginPage = () => {
                   <span>Signing in...</span>
                 </>
               ) : (
-                <span>Sign in</span>
+                <span className="dark:text-white">Sign in</span>
               )}
             </button>
           </div>
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:text-blue-500 font-medium">
+            <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 font-medium">
               Sign up
             </Link>
           </p>

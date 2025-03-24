@@ -369,10 +369,10 @@ const AdminPage = () => {
   
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-md">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="mb-4">You do not have permission to access this area.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+        <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Access Denied</h1>
+          <p className="mb-4 dark:text-white">You do not have permission to access this area.</p>
           <button 
             onClick={() => navigate('/')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -385,33 +385,33 @@ const AdminPage = () => {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
           <div className="p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Admin Dashboard</h1>
             
             {error && (
-              <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-lg">
+              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
                 {error}
               </div>
             )}
             
             {successMessage && (
-              <div className="mb-4 p-4 bg-green-50 text-green-700 rounded-lg">
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg">
                 {successMessage}
               </div>
             )}
             
             {/* Tabs */}
-            <div className="border-b border-gray-200 mb-6">
+            <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
               <nav className="-mb-px flex space-x-8">
                 <button
                   onClick={() => setActiveTab('users')}
                   className={`pb-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'users'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Users
@@ -420,8 +420,8 @@ const AdminPage = () => {
                   onClick={() => setActiveTab('recipes')}
                   className={`pb-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'recipes'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Recipes
@@ -430,8 +430,8 @@ const AdminPage = () => {
                   onClick={() => setActiveTab('banned-emails')}
                   className={`pb-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === 'banned-emails'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   Banned Emails
@@ -448,37 +448,37 @@ const AdminPage = () => {
                     id="userSearch"
                     type="text"
                     placeholder="Search users by username or ID..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Username
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           User ID
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Admin
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Created At
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                       {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             No users found
                           </td>
                         </tr>
@@ -497,11 +497,11 @@ const AdminPage = () => {
                                   </div>
                                 )}
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                                     {userProfile.username}
                                     {isUsernameBanned(userProfile.username).isBanned && (
                                       <span 
-                                        className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer"
+                                        className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-pointer"
                                         onClick={() => handleShowBanReason(isUsernameBanned(userProfile.username).reason)}
                                       >
                                         Banned
@@ -509,11 +509,11 @@ const AdminPage = () => {
                                     )}
                                   </div>
                                   {userProfile.email && (
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">
                                       {userProfile.email}
                                       {isUserBanned(userProfile.email).isBanned && (
                                         <span 
-                                          className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 cursor-pointer"
+                                          className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-pointer"
                                           onClick={() => handleShowBanReason(isUserBanned(userProfile.email).reason)}
                                         >
                                           Banned
@@ -524,19 +524,19 @@ const AdminPage = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {userProfile.id}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                 userProfile.is_admin
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                               }`}>
                                 {userProfile.is_admin ? 'Yes' : 'No'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {new Date(userProfile.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -544,7 +544,7 @@ const AdminPage = () => {
                               {(!userProfile.is_admin || userProfile.id !== user?.id) && (
                                 <button
                                   onClick={() => handleDeleteUser(userProfile.id, userProfile.username)}
-                                  className="text-red-600 hover:text-red-900"
+                                  className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"
                                   disabled={userProfile.id === user?.id}
                                 >
                                   Delete
@@ -569,34 +569,34 @@ const AdminPage = () => {
                     id="recipeSearch"
                     type="text"
                     placeholder="Search recipes by title or username..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                     value={recipeSearch}
                     onChange={(e) => setRecipeSearch(e.target.value)}
                   />
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Title
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Author
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Created At
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                       {filteredRecipes.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             No recipes found
                           </td>
                         </tr>
@@ -615,22 +615,22 @@ const AdminPage = () => {
                                   </div>
                                 )}
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
                                     {recipe.title}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {recipe.username || 'Unknown'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {new Date(recipe.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <button
                                 onClick={() => handleDeleteRecipe(recipe.id, recipe.title)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"
                               >
                                 Delete
                               </button>
@@ -648,11 +648,11 @@ const AdminPage = () => {
             {activeTab === 'banned-emails' && (
               <div>
                 <div className="mb-6">
-                  <form onSubmit={handleBanEmail} className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Ban New Email</h3>
+                  <form onSubmit={handleBanEmail} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Ban New Email</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="col-span-1">
-                        <label htmlFor="newBannedEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="newBannedEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Email Address
                         </label>
                         <input
@@ -660,20 +660,20 @@ const AdminPage = () => {
                           type="email"
                           required
                           placeholder="email@example.com"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                           value={newBannedEmail}
                           onChange={(e) => setNewBannedEmail(e.target.value)}
                         />
                       </div>
                       <div className="col-span-1 md:col-span-2">
-                        <label htmlFor="banReason" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label htmlFor="banReason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Reason (Optional)
                         </label>
                         <input
                           id="banReason"
                           type="text"
                           placeholder="Reason for banning"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                           value={banReason}
                           onChange={(e) => setBanReason(e.target.value)}
                         />
@@ -682,8 +682,8 @@ const AdminPage = () => {
                     <div className="mt-4">
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
+                        className="px-4 py-2 text-sm font-medium text-red-600 bg-red-200 dark:bg-red-400 dark:text-red-900 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                        >
                         Ban Email
                       </button>
                     </div>
@@ -694,34 +694,34 @@ const AdminPage = () => {
                     id="emailSearch"
                     type="text"
                     placeholder="Search banned emails..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                     value={emailSearch}
                     onChange={(e) => setEmailSearch(e.target.value)}
                   />
                 </div>
                 
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Email
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Reason
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Banned At
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                       {filteredBannedEmails.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                          <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                             No banned emails found
                           </td>
                         </tr>
@@ -729,20 +729,20 @@ const AdminPage = () => {
                         filteredBannedEmails.map((bannedEmail) => (
                           <tr key={bannedEmail.id}>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {bannedEmail.email}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {bannedEmail.reason || 'No reason provided'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {new Date(bannedEmail.created_at).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <button
                                 onClick={() => handleRemoveBannedEmail(bannedEmail.id, bannedEmail.email)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"
                               >
                                 Remove
                               </button>
@@ -762,9 +762,9 @@ const AdminPage = () => {
       {/* Add Ban Reason Modal */}
       {showBanReasonModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Ban Reason</h3>
-            <p className="text-gray-700 mb-6">{selectedBanReason || 'No reason provided'}</p>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Ban Reason</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-6">{selectedBanReason || 'No reason provided'}</p>
             <div className="flex justify-end">
               <button
                 type="button"

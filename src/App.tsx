@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AddRecipePage from './pages/AddRecipePage';
 import RecipesPage from './pages/RecipesPage';
@@ -16,6 +16,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { useTheme } from './context/ThemeContext';
+import BookmarkedRecipesPage from './pages/BookmarkedRecipesPage';
 
 function App() {
   const location = useLocation();
@@ -24,21 +25,16 @@ function App() {
   
   // Page transition - faster and only for subsequent navigations
   useEffect(() => {
-    // Don't run the transition animation on initial page load
-    const isInitialLoad = sessionStorage.getItem('initialLoad') === null;
-    if (isInitialLoad) {
-      sessionStorage.setItem('initialLoad', 'false');
-      setLoading(false);
-      return;
+    const handleNavigation = () => {
+      // Set loading for just 100ms (subtle effect) for a bit of visual indication of page change
+      setLoading(true);
+      setTimeout(() => setLoading(false), 100);
+    };
+    
+    // Execute only if there's already content (not first load)
+    if (document.body.innerHTML !== '') {
+      handleNavigation();
     }
-    
-    setLoading(true);
-    // Reduced transition time from 300ms to 150ms
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 150);
-    
-    return () => clearTimeout(timer);
   }, [location.pathname]);
   
   return (
@@ -58,7 +54,7 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/recipes" element={<RecipesPage />} />
-            <Route path="/recipes/:id" element={<RecipeDetailPage />} />
+            <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
             <Route path="/forgot-password" element={<PasswordResetRequestPage />} />
             <Route path="/reset-password" element={<PasswordResetConfirmPage />} />
             
@@ -78,9 +74,14 @@ function App() {
                 <AddRecipePage />
               </ProtectedRoute>
             } />
-            <Route path="/edit-recipe/:id" element={
+            <Route path="/edit-recipe/:slug" element={
               <ProtectedRoute>
                 <AddRecipePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/bookmarks" element={
+              <ProtectedRoute>
+                <BookmarkedRecipesPage />
               </ProtectedRoute>
             } />
             

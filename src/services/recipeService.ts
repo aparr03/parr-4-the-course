@@ -12,6 +12,7 @@ export interface Recipe {
   user_id: string;
   created_at: string;
   username?: string;
+  tags?: string[];
 }
 
 // Define bucket name in one place for easy changes
@@ -65,14 +66,29 @@ export const recipeService = {
       return { error: { message: 'You must be logged in to create a recipe' }, data: null };
     }
     
-    return supabase
+    // Extract tags from the recipe object
+    const { tags, ...recipeData } = recipe;
+    
+    // First, create the recipe
+    const { data: newRecipe, error } = await supabase
       .from('recipes')
       .insert({
-        ...recipe,
+        ...recipeData,
         user_id: userId
       })
       .select()
       .single();
+      
+    if (error || !newRecipe) {
+      return { error, data: null };
+    }
+    
+    // If there are tags, save them
+    if (tags && tags.length > 0) {
+      await this.updateRecipeTags(newRecipe.id, tags);
+    }
+    
+    return { data: { ...newRecipe, tags }, error: null };
   },
   
   /**
@@ -102,33 +118,10 @@ export const recipeService = {
         return { data: [], error: null };
       }
       
-      // Get unique user IDs
-      const userIds = [...new Set(recipes.map(recipe => recipe.user_id))];
+      // Get usernames and tags for recipes
+      const recipesWithUsernamesAndTags = await this.enrichRecipesWithUsernamesAndTags(recipes);
       
-      // Fetch all usernames in a single query
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', userIds);
-        
-      if (profilesError) {
-        console.error('Error fetching usernames:', profilesError);
-        return { data: recipes, error: null };
-      }
-      
-      // Create a map of user_id -> username for efficient lookup
-      const usernameMap = profiles?.reduce((map, profile) => {
-        map[profile.id] = profile.username;
-        return map;
-      }, {} as {[key: string]: string}) || {};
-      
-      // Add username to each recipe
-      const recipesWithUsernames = recipes.map(recipe => ({
-        ...recipe,
-        username: usernameMap[recipe.user_id] || 'Unknown User'
-      }));
-      
-      return { data: recipesWithUsernames, error: null };
+      return { data: recipesWithUsernamesAndTags, error: null };
     } catch (error) {
       console.error('Error fetching recipes:', error);
       return { 
@@ -204,17 +197,24 @@ export const recipeService = {
       .eq('id', recipe.user_id)
       .single();
       
-    if (!profileError && profile) {
-      // Add username to the recipe
-      const recipeWithUsername = {
-        ...recipe,
-        username: profile.username
-      };
+    // Get tags for the recipe
+    const { data: recipeTags, error: tagsError } = await supabase
+      .from('recipe_tags')
+      .select('tag')
+      .eq('recipe_id', id);
       
-      return { data: recipeWithUsername, error: null };
+    if (tagsError) {
+      console.error('Error fetching recipe tags:', tagsError);
     }
     
-    return { data: recipe, error: null };
+    // Create recipe with username and tags
+    const recipeWithUsernameAndTags = {
+      ...recipe,
+      username: profileError ? undefined : profile.username,
+      tags: tagsError ? [] : recipeTags.map(rt => rt.tag)
+    };
+    
+    return { data: recipeWithUsernameAndTags, error: null };
   },
   
   /**
@@ -243,12 +243,27 @@ export const recipeService = {
       return { error: { message: 'You can only update your own recipes' }, data: null };
     }
     
-    return supabase
+    // Extract tags from the recipe object
+    const { tags, ...recipeData } = recipe;
+    
+    // Update the recipe
+    const { data: updatedRecipe, error } = await supabase
       .from('recipes')
-      .update(recipe)
+      .update(recipeData)
       .eq('id', id)
       .select()
       .single();
+      
+    if (error) {
+      return { error, data: null };
+    }
+    
+    // If tags were provided, update them
+    if (tags !== undefined) {
+      await this.updateRecipeTags(id, tags);
+    }
+    
+    return { data: { ...updatedRecipe, tags }, error: null };
   },
   
   /**
@@ -281,5 +296,128 @@ export const recipeService = {
       .from('recipes')
       .delete()
       .eq('id', id);
+  },
+
+  /**
+   * Update tags for a recipe
+   */
+  async updateRecipeTags(recipeId: string, tags: string[]) {
+    try {
+      // First, remove all existing tags for this recipe
+      const { error: deleteError } = await supabase
+        .from('recipe_tags')
+        .delete()
+        .eq('recipe_id', recipeId);
+        
+      if (deleteError) {
+        console.error('Error removing existing tags:', deleteError);
+        return { success: false, error: deleteError };
+      }
+      
+      // If there are no new tags, we're done
+      if (!tags || tags.length === 0) {
+        return { success: true, error: null };
+      }
+      
+      // Create tag objects for insert
+      const tagObjects = tags.map(tag => ({
+        recipe_id: recipeId,
+        tag: tag.trim().toLowerCase()
+      }));
+      
+      // Insert new tags
+      const { error: insertError } = await supabase
+        .from('recipe_tags')
+        .insert(tagObjects);
+        
+      if (insertError) {
+        console.error('Error inserting new tags:', insertError);
+        return { success: false, error: insertError };
+      }
+      
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Error updating recipe tags:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error : new Error('An unexpected error occurred') 
+      };
+    }
+  },
+
+  /**
+   * Get all available tags
+   */
+  async getAllTags() {
+    try {
+      const { data, error } = await supabase
+        .from('recipe_tags')
+        .select('tag')
+        .order('tag');
+        
+      if (error) {
+        return { data: null, error };
+      }
+      
+      // Extract unique tags
+      const uniqueTags = [...new Set(data.map(t => t.tag))];
+      
+      return { data: uniqueTags, error: null };
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error : new Error('An unexpected error occurred') 
+      };
+    }
+  },
+
+  /**
+   * Helper function to add usernames and tags to a list of recipes
+   */
+  async enrichRecipesWithUsernamesAndTags(recipes: Recipe[]) {
+    // Get unique user IDs
+    const userIds = [...new Set(recipes.map(recipe => recipe.user_id))];
+    
+    // Fetch all usernames in a single query
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds);
+      
+    // Create a map of user_id -> username for efficient lookup
+    const usernameMap = profiles && !profilesError
+      ? profiles.reduce((map, profile) => {
+          map[profile.id] = profile.username;
+          return map;
+        }, {} as {[key: string]: string})
+      : {};
+    
+    // Get recipe IDs
+    const recipeIds = recipes.map(recipe => recipe.id);
+    
+    // Fetch all tags for these recipes
+    const { data: recipeTags, error: tagsError } = await supabase
+      .from('recipe_tags')
+      .select('recipe_id, tag')
+      .in('recipe_id', recipeIds);
+    
+    // Create a map of recipe_id -> tags for efficient lookup
+    const tagsMap = recipeTags && !tagsError
+      ? recipeTags.reduce((map, { recipe_id, tag }) => {
+          if (!map[recipe_id]) {
+            map[recipe_id] = [];
+          }
+          map[recipe_id].push(tag);
+          return map;
+        }, {} as {[key: string]: string[]})
+      : {};
+    
+    // Add username and tags to each recipe
+    return recipes.map(recipe => ({
+      ...recipe,
+      username: usernameMap ? usernameMap[recipe.user_id] || 'Unknown User' : 'Unknown User',
+      tags: tagsMap ? tagsMap[recipe.id] || [] : []
+    }));
   }
 }; 

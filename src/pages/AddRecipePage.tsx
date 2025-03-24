@@ -3,9 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { recipeService } from '../services/recipeService';
 import { useAuth } from '../context/AuthContext';
 
+// Helper function to create a slug from a recipe title
+const createSlug = (title: string): string => {
+  return title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+};
+
 const AddRecipePage = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const { } = useAuth();
   const [recipe, setRecipe] = useState({
     title: '',
@@ -15,6 +20,7 @@ const AddRecipePage = () => {
     servings: '',
     imageUrl: ''
   });
+  const [recipeId, setRecipeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formVisible, setFormVisible] = useState(false);
@@ -25,29 +31,65 @@ const AddRecipePage = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
 
   // Load existing recipe data when in edit mode
   useEffect(() => {
-    // Check if we're in edit mode (id parameter exists)
-    if (id) {
+    // Check if we're in edit mode (slug parameter exists)
+    if (slug) {
       setIsEditMode(true);
-      loadRecipeData(id);
+      loadRecipeData(slug);
     }
     
     setFormVisible(true);
-  }, [id]);
+    
+    // Load available tags
+    loadAvailableTags();
+  }, [slug]);
+
+  // Load available tags from the database
+  const loadAvailableTags = async () => {
+    try {
+      const { data, error } = await recipeService.getAllTags();
+      if (error) throw error;
+      if (data) {
+        setAvailableTags(data);
+      }
+    } catch (err) {
+      console.error('Error loading available tags:', err);
+    }
+  };
 
   // Function to load recipe data when editing
-  const loadRecipeData = async (recipeId: string) => {
+  const loadRecipeData = async (recipeSlug: string) => {
     setLoading(true);
     try {
-      const { data, error } = await recipeService.getRecipe(recipeId);
+      // First, get all recipes to find the one with the matching slug
+      const { data: recipes, error: recipesError } = await recipeService.getAllRecipes();
+      
+      if (recipesError) {
+        throw recipesError;
+      }
+      
+      // Find recipe with matching slug
+      const matchingRecipe = recipes?.find(r => createSlug(r.title) === recipeSlug);
+      
+      if (!matchingRecipe) {
+        throw new Error('Recipe not found');
+      }
+      
+      // Now fetch the full recipe by ID
+      const { data, error } = await recipeService.getRecipe(matchingRecipe.id);
       
       if (error) {
         throw error;
       }
       
       if (data) {
+        setRecipeId(data.id);
         setRecipe({
           title: data.title || '',
           ingredients: data.ingredients || '',
@@ -56,6 +98,11 @@ const AddRecipePage = () => {
           servings: data.servings || '',
           imageUrl: data.imageUrl || ''
         });
+        
+        // Set tags if they exist
+        if (data.tags) {
+          setTags(data.tags);
+        }
         
         // Set image preview if there's an image URL
         if (data.imageUrl) {
@@ -110,13 +157,38 @@ const AddRecipePage = () => {
     }
   };
 
+  // Handle adding a new tag
+  const handleAddTag = (tagValue?: string) => {
+    const tag = (tagValue || tagInput).trim().toLowerCase();
+    if (!tag) return;
+    
+    // Check if tag already exists in the list
+    if (!tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
+    
+    setTagInput('');
+    setShowTagSuggestions(false);
+  };
+
+  // Handle removing a tag
+  const handleRemoveTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
+  };
+
+  // Filter available tags based on tag input
+  const filteredTags = availableTags
+    .filter(tag => tag.toLowerCase().includes(tagInput.toLowerCase()))
+    .filter(tag => !tags.includes(tag)) // Don't show already added tags
+    .slice(0, 5); // Limit to 5 suggestions
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
     try {
-      let finalRecipe = { ...recipe };
+      let finalRecipe = { ...recipe, tags };
       
       // If there's an image file, upload it first
       if (imageFile) {
@@ -138,9 +210,9 @@ const AddRecipePage = () => {
       let result;
       
       // If we're in edit mode, update the existing recipe
-      if (isEditMode && id) {
-        console.log('Updating existing recipe:', id);
-        result = await recipeService.updateRecipe(id, finalRecipe);
+      if (isEditMode && recipeId) {
+        console.log('Updating existing recipe:', recipeId);
+        result = await recipeService.updateRecipe(recipeId, finalRecipe);
       } else {
         // Otherwise create a new recipe
         console.log('Creating new recipe');
@@ -175,8 +247,8 @@ const AddRecipePage = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 pb-20">
-      <div className={`bg-white rounded-xl shadow-lg p-6 sm:p-8 transition-opacity duration-500 ${formVisible ? 'opacity-100' : 'opacity-0'}`}>
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
+      <div className={`bg-white dark:bg-gray-800/90 rounded-xl shadow-lg p-6 sm:p-8 transition-opacity duration-500 ${formVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
           {isEditMode ? 'Edit Recipe' : 'Add New Recipe'}
         </h1>
         
@@ -208,14 +280,14 @@ const AddRecipePage = () => {
           </div>
         )}
         
-        <div className="bg-white shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
+        <div className="bg-white dark:bg-gray-700/90 shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Step 1: Basic Information */}
             <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(1) ? 'block opacity-100' : 'hidden opacity-0'}`}>
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Basic Information</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Basic Information</h2>
               
               <div>
-                <label htmlFor="title" className="block mb-2 font-medium text-gray-700">Recipe Title</label>
+                <label htmlFor="title" className="block mb-2 font-medium text-gray-700 dark:text-white">Recipe Title</label>
                 <input
                   id="title"
                   name="title"
@@ -229,7 +301,7 @@ const AddRecipePage = () => {
               </div>
               
               <div>
-                <label htmlFor="imageUrl" className="block mb-2 font-medium text-gray-700">Recipe Image</label>
+                <label htmlFor="imageUrl" className="block mb-2 font-medium text-gray-700 dark:text-white">Recipe Image</label>
                 <div className="space-y-3">
                   <input 
                     ref={fileInputRef}
@@ -269,16 +341,16 @@ const AddRecipePage = () => {
                       onClick={triggerFileInput}
                       className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center hover:border-blue-500 transition-colors"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span className="text-sm text-gray-600">Click to upload an image</span>
-                      <span className="text-xs text-gray-500 mt-1">(PNG, JPG, JPEG up to 5MB)</span>
+                      <span className="text-sm text-gray-600 dark:text-white">Click to upload an image</span>
+                      <span className="text-xs text-gray-500 mt-1 dark:text-white">(PNG, JPG, JPEG up to 5MB)</span>
                     </button>
                   )}
                   
                   <div className="flex items-center">
-                    <span className="mr-2 text-gray-600">Or</span>
+                    <span className="mr-2 text-gray-600 dark:text-white">Or</span>
                     <div className="flex-grow border-t border-gray-300"></div>
                   </div>
                   
@@ -294,6 +366,75 @@ const AddRecipePage = () => {
                 </div>
               </div>
               
+              <div>
+                <label htmlFor="tags" className="block mb-2 font-medium text-gray-700 dark:text-white">Tags</label>
+                <div className="space-y-2">
+                  {/* Display added tags */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {tags.map((tag, index) => (
+                      <div 
+                        key={index} 
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                      >
+                        {tag}
+                        <button 
+                          type="button" 
+                          onClick={() => handleRemoveTag(tag)}
+                          className="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Tag input with autocomplete */}
+                  <div className="relative">
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={tagInput}
+                        onChange={(e) => {
+                          setTagInput(e.target.value);
+                          setShowTagSuggestions(true);
+                        }}
+                        onFocus={() => setShowTagSuggestions(true)}
+                        placeholder="Add tags (e.g. dinner, vegetarian, easy)"
+                        className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddTag()}
+                        className="px-4 py-3 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    
+                    {/* Tag suggestions */}
+                    {showTagSuggestions && tagInput.trim() !== '' && filteredTags.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md border border-gray-200 dark:border-gray-700">
+                        {filteredTags.map((tag, index) => (
+                          <div
+                            key={index}
+                            className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                            onClick={() => handleAddTag(tag)}
+                          >
+                            {tag}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Tags help users find your recipe. Add up to 5 tags.
+                  </p>
+                </div>
+              </div>
+              
               <div className="flex justify-between pt-4">
                 <div></div>
                 <button
@@ -301,8 +442,8 @@ const AddRecipePage = () => {
                   onClick={() => moveToStep(2)}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
                 >
-                  <span>Next Step</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <span className="text-white">Next Step</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
@@ -311,7 +452,7 @@ const AddRecipePage = () => {
             
             {/* Step 2: Ingredients */}
             <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(2) ? 'block opacity-100' : 'hidden opacity-0'}`}>
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Ingredients</h2>
+              <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Ingredients</h2>
               
               <div>
                 <label htmlFor="ingredients" className="block mb-2 font-medium text-gray-700">Ingredients</label>
@@ -329,7 +470,7 @@ const AddRecipePage = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="time" className="block mb-2 font-medium text-gray-700">Cooking Time (minutes)</label>
+                  <label htmlFor="time" className="block mb-2 font-medium text-gray-700 dark:text-white">Cooking Time (minutes)</label>
                   <input
                     id="time"
                     name="time"
@@ -360,20 +501,20 @@ const AddRecipePage = () => {
                 <button
                   type="button"
                   onClick={() => moveToStep(1)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
+                  className="px-6 py-3 bg-gray-400 dark:text-white text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
                   </svg>
-                  <span>Previous</span>
+                  <span className="text-white">Previous</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => moveToStep(3)}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
                 >
-                  <span>Next Step</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <span className="text-white">Next Step</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>
@@ -382,7 +523,7 @@ const AddRecipePage = () => {
             
             {/* Step 3: Instructions */}
             <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(3) ? 'block opacity-100' : 'hidden opacity-0'}`}>
-              <h2 className="text-xl font-semibold mb-4 text-gray-800">Cooking Instructions</h2>
+              <h2 className="text-xl font-semibold mb-4 dark:text-white text-gray-800">Cooking Instructions</h2>
               
               <div>
                 <label htmlFor="instructions" className="block mb-2 font-medium text-gray-700">Instructions</label>
@@ -402,12 +543,12 @@ const AddRecipePage = () => {
                 <button
                   type="button"
                   onClick={() => moveToStep(2)}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
+                  className="px-6 py-3 bg-gray-400 dark:text-white text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
                   </svg>
-                  <span>Previous</span>
+                  <span className="text-white">Previous</span>
                 </button>
                 <button
                   type="submit"
@@ -424,8 +565,8 @@ const AddRecipePage = () => {
                     </>
                   ) : (
                     <>
-                      <span>{isEditMode ? 'Update Recipe' : 'Save Recipe'}</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <span className="text-white">{isEditMode ? 'Update Recipe' : 'Save Recipe'}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                       </svg>
                     </>

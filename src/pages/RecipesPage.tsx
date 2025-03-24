@@ -1,229 +1,430 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { recipeService } from '../services/recipeService';
+import { bookmarkService } from '../services/bookmarkService';
 import { useAuth } from '../context/AuthContext';
 import type { Recipe } from '../services/recipeService';
+import { formatDistanceToNow } from 'date-fns';
+import { createSlug } from '../utils/slugify';
+
+// Memoize individual recipe card to prevent unnecessary re-renders
+const RecipeCard = memo(({ 
+  recipe, 
+  bookmarked, 
+  bookmarkLoading, 
+  onToggleBookmark, 
+  onRecipeClick 
+}: { 
+  recipe: Recipe; 
+  bookmarked: boolean; 
+  bookmarkLoading: boolean; 
+  onToggleBookmark: (id: string, e: React.MouseEvent) => void;
+  onRecipeClick: (recipe: Recipe) => void;
+}) => {
+  const formattedDate = recipe.created_at 
+    ? formatDistanceToNow(new Date(recipe.created_at), { addSuffix: true }) 
+    : '';
+
+  return (
+    <div
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-transform hover:transform hover:scale-105 cursor-pointer hover:shadow-lg relative"
+      onClick={() => onRecipeClick(recipe)}
+    >
+      <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
+        {recipe.imageUrl ? (
+          <img
+            src={recipe.imageUrl}
+            alt={recipe.title}
+            className="w-full h-full object-cover"
+            loading="lazy" // Add lazy loading for images
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-gray-400 dark:text-white">No image</span>
+          </div>
+        )}
+        
+        {/* Bookmark button */}
+        <button
+          onClick={(e) => onToggleBookmark(recipe.id, e)}
+          disabled={bookmarkLoading}
+          className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-2 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 z-10"
+          aria-label={bookmarked ? "Remove bookmark" : "Add bookmark"}
+        >
+          {bookmarkLoading ? (
+            <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : bookmarked ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          )}
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">{recipe.title}</h3>
+        
+        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span className="dark:text-gray-400">{recipe.username}</span>
+        </div>
+        
+        <div className="flex flex-wrap items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+          {recipe.time && (
+            <div className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="dark:text-gray-400">{recipe.time}</span>
+            </div>
+          )}
+          
+          {recipe.servings && (
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-1 text-gray-500 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              <span className="dark:text-gray-400">{recipe.servings}</span>
+            </div>
+          )}
+        </div>
+        
+        {recipe.created_at && (
+          <div className="text-xs text-gray-400 dark:text-gray-500">
+            {formattedDate}
+          </div>
+        )}
+        
+        {/* Tags */}
+        {recipe.tags && recipe.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {recipe.tags.map((tag, index) => (
+              <span 
+                key={index} 
+                className="inline-block bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Advanced memoization to prevent unnecessary re-renders
+  return prevProps.recipe.id === nextProps.recipe.id && 
+         prevProps.bookmarked === nextProps.bookmarked &&
+         prevProps.bookmarkLoading === nextProps.bookmarkLoading;
+});
 
 const RecipesPage = () => {
   const { user } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'mine'>('all');
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>({});
+  const [bookmarkLoading, setBookmarkLoading] = useState<Record<string, boolean>>({});
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Prevent loading animation when switching tabs
   useEffect(() => {
-    loadRecipes();
-  }, [filter, user]);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isInitialLoad) {
+        // Don't show loading indicator when returning to tab
+        setLoading(false);
+      }
+    };
 
-  const loadRecipes = async () => {
-    setLoading(true);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isInitialLoad]);
+
+  // Memoize the loadRecipes function to prevent unnecessary re-renders
+  const loadRecipes = useCallback(async () => {
+    if (isInitialLoad) {
+      setLoading(true);
+    }
     setError(null);
     
     try {
-      let data;
-      if (filter === 'all') {
-        data = await recipeService.getAllRecipes();
-      } else {
-        data = await recipeService.getUserRecipes();
+      const { data, error } = await recipeService.getAllRecipes();
+      
+      if (error) {
+        throw error;
       }
       
-      if (data.error) {
-        throw data.error;
+      if (data) {
+        setRecipes(data);
+        // Initial filtering without re-running the filter logic
+        setFilteredRecipes(data);
+        
+        // If user is logged in, check bookmark status for each recipe
+        if (user) {
+          await checkBookmarkStatus(data);
+        }
       }
-      
-      setRecipes(data.data || []);
     } catch (err: any) {
       console.error('Error loading recipes:', err);
       setError(err.message || 'Failed to load recipes');
-      setRecipes([]);
     } finally {
       setLoading(false);
+      setIsInitialLoad(false);
     }
+  }, [user, isInitialLoad]);
+  
+  const loadTags = useCallback(async () => {
+    try {
+      const { data, error } = await recipeService.getAllTags();
+      if (error) throw error;
+      if (data) {
+        setAvailableTags(data);
+      }
+    } catch (err) {
+      console.error('Error loading tags:', err);
+    }
+  }, []);
+  
+  // Use a useEffect with a cleanup function for better performance
+  useEffect(() => {
+    // Single array for all recipes
+    let isMounted = true;
+    
+    const loadData = async () => {
+      await Promise.all([loadRecipes(), loadTags()]);
+    };
+    
+    loadData();
+    
+    // Check URL for tag parameter
+    const params = new URLSearchParams(location.search);
+    const tagParam = params.get('tag');
+    if (tagParam && isMounted) {
+      setSelectedTag(tagParam);
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [loadRecipes, loadTags, location.search]);
+  
+  // Memoize filter function to improve performance
+  useEffect(() => {
+    if (recipes.length > 0) {
+      const filtered = recipes.filter(recipe => {
+        const matchesSearch = recipe.title.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesTag = !selectedTag || (recipe.tags && recipe.tags.includes(selectedTag));
+        return matchesSearch && matchesTag;
+      });
+      setFilteredRecipes(filtered);
+    }
+  }, [recipes, searchTerm, selectedTag]);
+
+  const checkBookmarkStatus = async (recipesToCheck: Recipe[]) => {
+    if (!user) return;
+    
+    const newBookmarks: Record<string, boolean> = {};
+    
+    await Promise.all(
+      recipesToCheck.map(async (recipe) => {
+        try {
+          const { bookmarked } = await bookmarkService.isBookmarked(recipe.id);
+          newBookmarks[recipe.id] = bookmarked;
+        } catch (err) {
+          console.error(`Error checking bookmark for recipe ${recipe.id}:`, err);
+        }
+      })
+    );
+    
+    setBookmarks(newBookmarks);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this recipe?')) return;
+  const handleToggleBookmark = async (recipeId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    
+    if (!user) {
+      // Prompt user to log in
+      if (window.confirm('You need to be logged in to bookmark recipes. Would you like to log in now?')) {
+        navigate('/login');
+      }
+      return;
+    }
+    
+    setBookmarkLoading(prev => ({ ...prev, [recipeId]: true }));
     
     try {
-      const { error } = await recipeService.deleteRecipe(id);
-      if (error) throw error;
-      loadRecipes(); // Reload the recipes after deletion
+      const { data } = await bookmarkService.toggleBookmark(recipeId);
+      
+      if (data) {
+        setBookmarks(prev => ({
+          ...prev,
+          [recipeId]: data.bookmarked
+        }));
+      }
     } catch (err: any) {
-      console.error('Error deleting recipe:', err);
-      alert('Failed to delete recipe: ' + err.message);
+      console.error('Error toggling bookmark:', err);
+    } finally {
+      setBookmarkLoading(prev => ({ ...prev, [recipeId]: false }));
     }
   };
 
-  const isOwner = (recipe: Recipe) => {
-    return user && recipe.user_id === user.id;
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
-  
+
+  const handleTagClick = (tag: string | null) => {
+    setSelectedTag(tag);
+    
+    // Update URL to reflect tag filter
+    const params = new URLSearchParams(location.search);
+    if (tag) {
+      params.set('tag', tag);
+    } else {
+      params.delete('tag');
+    }
+    
+    navigate({
+      pathname: location.pathname,
+      search: params.toString()
+    }, { replace: true });
+  };
+
+  const handleRecipeClick = useCallback((recipe: Recipe) => {
+    const slug = createSlug(recipe.title);
+    navigate(`/recipes/${slug}`);
+  }, [navigate]);
+
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-blue-600 mb-2">Recipes</h1>
-          <p className="text-gray-600">Discover and explore delicious recipes</p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-          <div className="inline-flex rounded-md shadow-sm">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-              }`}
-            >
-              All Recipes
-            </button>
-            <button
-              onClick={() => setFilter('mine')}
-              className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
-                filter === 'mine'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-              }`}
-              disabled={!user}
-            >
-              My Recipes
-            </button>
+    <div className="max-w-7xl mx-auto p-4 pb-32">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">Recipes</h1>
+        
+        {/* Search and filters */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-grow">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search recipes..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="block w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <Link 
+                to="/add-recipe" 
+                className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white rounded-lg shadow transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                <span className="dark:text-white">Add Recipe</span>
+              </Link>
+            </div>
           </div>
-          <Link
-            to="/add-recipe"
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Add New Recipe
-          </Link>
-        </div>
-      </div>
-      
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
-          {error}
-          {filter === 'mine' && !user && (
-            <div className="mt-2">
-              <Link to="/login" className="text-blue-600 hover:underline font-medium">
-                Sign in
-              </Link> to view your saved recipes.
+          
+          {/* Tags filter */}
+          {availableTags.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by tag:</h3>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleTagClick(null)}
+                  className={`px-3 py-1 rounded-full text-sm ${
+                    !selectedTag 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                  }`}
+                >
+                  All
+                </button>
+                {availableTags.map((tag, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleTagClick(tag)}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      selectedTag === tag 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
-      )}
-      
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-        </div>
-      ) : recipes.length === 0 ? (
-        <div className="bg-white rounded-xl shadow p-8 text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No recipes found</h3>
-          <p className="mt-2 text-gray-600">
-            {filter === 'mine' ? 
-              "You haven't created any recipes yet." : 
-              "There are no recipes available at the moment."}
-          </p>
-          <div className="mt-6">
-            <Link
-              to="/add-recipe"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Create Your First Recipe
-            </Link>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <p className="font-bold">Error</p>
+            <p>{error}</p>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recipes.map((recipe) => (
-            <div key={recipe.id} className="bg-white rounded-xl shadow overflow-hidden hover:shadow-lg transition-shadow duration-300">
-              {recipe.imageUrl ? (
-                <div className="h-48 overflow-hidden">
-                  <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-300" />
-                </div>
-              ) : (
-                <div className="h-48 bg-gray-200 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
-              
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">{recipe.title}</h3>
-                
-                <div className="flex space-x-4 text-sm text-gray-600 mb-4">
-                  {recipe.time && (
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>{recipe.time} mins</span>
-                    </div>
-                  )}
-                  
-                  {recipe.servings && (
-                    <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      <span>{recipe.servings} servings</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-col space-y-3">
-                  {recipe.username && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span>By {recipe.username}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center">
-                    <Link
-                      to={`/recipes/${recipe.id}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      View Recipe
-                    </Link>
-                    
-                    {isOwner(recipe) && (
-                      <div className="flex space-x-2">
-                        <Link
-                          to={`/edit-recipe/${recipe.id}`}
-                          className="p-1.5 text-gray-600 hover:text-blue-600"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(recipe.id)}
-                          className="p-1.5 text-gray-600 hover:text-red-600"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
+        
+        {loading && isInitialLoad ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredRecipes.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredRecipes.map(recipe => (
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                bookmarked={bookmarks[recipe.id] || false}
+                bookmarkLoading={bookmarkLoading[recipe.id] || false}
+                onToggleBookmark={handleToggleBookmark}
+                onRecipeClick={handleRecipeClick}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No recipes found</h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {searchTerm 
+                ? `No recipes matching "${searchTerm}"${selectedTag ? ` with tag "${selectedTag}"` : ''}.` 
+                : selectedTag 
+                  ? `No recipes with tag "${selectedTag}".` 
+                  : 'Try adding your first recipe!'}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default RecipesPage; 
+export default memo(RecipesPage); 
