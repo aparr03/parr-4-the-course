@@ -111,13 +111,14 @@ const Footer = () => {
               </p>
 
               <p className="text-white dark:text-gray-200 mb-2">
-                <a href="https://parrportfolio.vercel.app/#contact" target="_blank" rel="noopener noreferrer" className="flex items-center text-white hover:text-blue-200 dark:hover:text-white transition">
+                <a href="https://parrportfolio.vercel.app" target="_blank" rel="noopener noreferrer" className="flex items-center text-white hover:text-blue-200 dark:hover:text-white transition">
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"/>
                   </svg>
                   My Portfolio
                 </a>
               </p>
+     
               
             </address>
           </div>
