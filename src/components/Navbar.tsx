@@ -150,6 +150,7 @@ const Navbar = () => {
   const navigationItems = [
     { name: 'Home', href: '/' },
     { name: 'Recipes', href: '/recipes' },
+    { name: 'Saved Recipes', href: '/bookmarks' }
   ];
 
   // Animation variants

@@ -4,6 +4,9 @@ import { recipeService } from '../services/recipeService';
 import { bookmarkService } from '../services/bookmarkService';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { Comments } from '../components/Comments';
+import { Heart } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 // Helper function to create a slug from a recipe title
 const createSlug = (title: string): string => {
@@ -23,6 +26,9 @@ const RecipeDetailPage = () => {
   const [formattedInstructions, setFormattedInstructions] = useState<string[]>([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
   
   useEffect(() => {
     if (slug) {
@@ -63,6 +69,20 @@ const RecipeDetailPage = () => {
         // Check if recipe is bookmarked by the current user
         if (user) {
           checkBookmarkStatus(data.id);
+          checkLikeStatus(data.id);
+        }
+
+        // Get like count
+        const { data: likesData, error: likesError } = await supabase
+          .from('recipe_likes')
+          .select('id', { count: 'exact' })
+          .eq('recipe_id', data.id);
+
+        if (likesError) {
+          console.error('Error fetching likes count:', likesError);
+          setLikeCount(0);
+        } else {
+          setLikeCount(likesData?.length || 0);
         }
       }
     } catch (err: any) {
@@ -79,6 +99,23 @@ const RecipeDetailPage = () => {
       setIsBookmarked(isBookmarkedResult.bookmarked);
     } catch (err) {
       console.error('Error checking bookmark status:', err);
+    }
+  };
+  
+  const checkLikeStatus = async (recipeId: string) => {
+    if (!user) return;
+
+    try {
+      const { data } = await supabase
+        .from('recipe_likes')
+        .select('id')
+        .eq('recipe_id', recipeId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setIsLiked(!!data);
+    } catch (err) {
+      console.error('Error checking like status:', err);
     }
   };
   
@@ -104,6 +141,46 @@ const RecipeDetailPage = () => {
       console.error('Error toggling bookmark:', err);
     } finally {
       setBookmarkLoading(false);
+    }
+  };
+  
+  const handleToggleLike = async () => {
+    if (!user || !recipe || likeLoading) return;
+
+    setLikeLoading(true);
+    try {
+      if (isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from('recipe_likes')
+          .delete()
+          .eq('recipe_id', recipe.id)
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        setIsLiked(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Like
+        const { error } = await supabase
+          .from('recipe_likes')
+          .insert([{ recipe_id: recipe.id, user_id: user.id }]);
+
+        if (error) throw error;
+        setIsLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+      // Refresh the like count and status on error
+      checkLikeStatus(recipe.id);
+      const { data: likesData } = await supabase
+        .from('recipe_likes')
+        .select('id', { count: 'exact' })
+        .eq('recipe_id', recipe.id);
+      setLikeCount(likesData?.length || 0);
+    } finally {
+      setLikeLoading(false);
     }
   };
   
@@ -202,35 +279,61 @@ const RecipeDetailPage = () => {
             </div>
           )}
           
-          {/* Bookmark button */}
-          <button
-            onClick={handleToggleBookmark}
-            disabled={bookmarkLoading}
-            className="absolute top-4 right-4 bg-white dark:bg-gray-800 rounded-full p-2.5 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
-          >
-            {bookmarkLoading ? (
-              <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : isBookmarked ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
-            )}
-          </button>
+          {/* Action buttons container */}
+          <div className="absolute top-4 right-4 flex space-x-2">
+            {/* Like button */}
+            <button
+              onClick={handleToggleLike}
+              disabled={likeLoading}
+              className="bg-white dark:bg-gray-800 rounded-full p-2.5 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label={isLiked ? "Unlike recipe" : "Like recipe"}
+            >
+              <Heart
+                className={`h-5 w-5 ${
+                  isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500'
+                }`}
+              />
+              <span className="sr-only">{likeCount} likes</span>
+            </button>
+
+            {/* Bookmark button */}
+            <button
+              onClick={handleToggleBookmark}
+              disabled={bookmarkLoading}
+              className="bg-white dark:bg-gray-800 rounded-full p-2.5 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+            >
+              {bookmarkLoading ? (
+                <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : isBookmarked ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
         
         {/* Recipe Content */}
         <div className="p-6">
           {/* Title and Actions */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{recipe.title}</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{recipe.title}</h1>
+              <div className="flex items-center mt-2 space-x-2">
+                <span className="flex items-center text-gray-600 dark:text-gray-400">
+                  <Heart className="w-4 h-4 mr-1" />
+                  {likeCount} {likeCount === 1 ? 'like' : 'likes'}
+                </span>
+              </div>
+            </div>
             
             {/* Actions for recipe owner */}
             {user && user.id === recipe.user_id && (
@@ -340,6 +443,11 @@ const RecipeDetailPage = () => {
                 ))}
               </ol>
             </div>
+          </div>
+
+          {/* Comments Section */}
+          <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+            <Comments recipeId={recipe.id} />
           </div>
         </div>
       </div>

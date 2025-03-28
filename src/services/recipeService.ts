@@ -4,15 +4,42 @@ import { supabase } from '../lib/supabase';
 export interface Recipe {
   id: string;
   title: string;
-  ingredients: string;
-  instructions: string;
-  time: string;
-  servings: string;
+  description: string;
+  ingredients: string[];
+  instructions: string[];
+  time: number;
+  servings: number;
+  difficulty: 'easy' | 'medium' | 'hard';
   imageUrl?: string;
-  user_id: string;
+  tags: string[];
   created_at: string;
-  username?: string;
-  tags?: string[];
+  updated_at: string;
+  user_id: string;
+  username: string;
+  likes_count?: number;
+  comments_count?: number;
+  recent_comments?: Array<{
+    id: string;
+    content: string;
+    created_at: string;
+    user: {
+      username: string;
+      avatar_url: string;
+    };
+  }>;
+}
+
+interface RecipeComment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  recipe_id: string;
+}
+
+interface RecipeLikeCount {
+  recipe_id: string;
+  count: number;
 }
 
 // Define bucket name in one place for easy changes
@@ -117,11 +144,101 @@ export const recipeService = {
       if (!recipes || recipes.length === 0) {
         return { data: [], error: null };
       }
+
+      // Get unique user IDs
+      const userIds = [...new Set(recipes.map(recipe => recipe.user_id))];
       
-      // Get usernames and tags for recipes
-      const recipesWithUsernamesAndTags = await this.enrichRecipesWithUsernamesAndTags(recipes);
+      // Fetch all usernames in a single query
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+
+      // Create a map of user_id -> profile for efficient lookup
+      const profileMap = profiles && !profilesError
+        ? profiles.reduce((map, profile) => {
+            map[profile.id] = profile;
+            return map;
+          }, {} as {[key: string]: { username: string; avatar_url: string }})
+        : {};
+
+      // Get recipe IDs
+      const recipeIds = recipes.map(recipe => recipe.id);
       
-      return { data: recipesWithUsernamesAndTags, error: null };
+      // Fetch all tags for these recipes
+      const { data: recipeTags, error: tagsError } = await supabase
+        .from('recipe_tags')
+        .select('recipe_id, tag')
+        .in('recipe_id', recipeIds);
+
+      // Create a map of recipe_id -> tags for efficient lookup
+      const tagsMap = recipeTags && !tagsError
+        ? recipeTags.reduce((map, { recipe_id, tag }) => {
+            if (!map[recipe_id]) {
+              map[recipe_id] = [];
+            }
+            map[recipe_id].push(tag);
+            return map;
+          }, {} as {[key: string]: string[]})
+        : {};
+
+      // Fetch comments for these recipes
+      const { data: comments, error: commentsError } = await supabase
+        .from('recipe_comments')
+        .select('*')
+        .in('recipe_id', recipeIds)
+        .order('created_at', { ascending: true });
+
+      // Create a map of recipe_id -> comments for efficient lookup
+      const commentsMap = comments && !commentsError
+        ? comments.reduce((map, comment) => {
+            if (!map[comment.recipe_id]) {
+              map[comment.recipe_id] = [];
+            }
+            map[comment.recipe_id].push(comment);
+            return map;
+          }, {} as {[key: string]: any[]})
+        : {};
+
+      // Fetch likes for these recipes
+      const { data: likes, error: likesError } = await supabase
+        .from('recipe_likes')
+        .select('recipe_id')
+        .in('recipe_id', recipeIds);
+
+      // Create a map of recipe_id -> likes count for efficient lookup
+      const likesMap = likes && !likesError
+        ? likes.reduce((map, { recipe_id }) => {
+            map[recipe_id] = (map[recipe_id] || 0) + 1;
+            return map;
+          }, {} as {[key: string]: number})
+        : {};
+
+      // Add username, tags, and comments to each recipe
+      const enrichedRecipes = recipes.map(recipe => {
+        const profile = profileMap[recipe.user_id];
+        const comments = commentsMap[recipe.id] || [];
+        
+        return {
+          ...recipe,
+          username: profile?.username || 'Unknown User',
+          avatar_url: profile?.avatar_url || '/default-avatar.png',
+          tags: tagsMap[recipe.id] || [],
+          comments_count: comments.length,
+          likes_count: likesMap[recipe.id] || 0,
+          recent_comments: comments.slice(0, 3).map((comment: RecipeComment) => ({
+            id: comment.id,
+            content: comment.content,
+            created_at: comment.created_at,
+            user: {
+              username: profileMap[comment.user_id]?.username || 'Unknown',
+              avatar_url: profileMap[comment.user_id]?.avatar_url || '/default-avatar.png'
+            }
+          }))
+        };
+      });
+      
+      return { data: enrichedRecipes, error: null };
     } catch (error) {
       console.error('Error fetching recipes:', error);
       return { 
@@ -145,7 +262,22 @@ export const recipeService = {
     // First, get user's recipes
     const { data: recipes, error } = await supabase
       .from('recipes')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (
+          username,
+          avatar_url
+        ),
+        recipe_comments (
+          id,
+          content,
+          created_at,
+          profiles:user_id (
+            username,
+            avatar_url
+          )
+        )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
       
@@ -190,10 +322,10 @@ export const recipeService = {
       return { data: recipe, error };
     }
     
-    // Get the username
+    // Get the user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('username')
+      .select('username, avatar_url')
       .eq('id', recipe.user_id)
       .single();
       
@@ -203,18 +335,48 @@ export const recipeService = {
       .select('tag')
       .eq('recipe_id', id);
       
-    if (tagsError) {
-      console.error('Error fetching recipe tags:', tagsError);
-    }
+    // Get comments for the recipe
+    const { data: comments, error: commentsError } = await supabase
+      .from('recipe_comments')
+      .select('*')
+      .eq('recipe_id', id)
+      .order('created_at', { ascending: true });
+
+    // Get unique user IDs from comments
+    const commentUserIds = comments ? [...new Set(comments.map((comment: RecipeComment) => comment.user_id))] : [];
     
-    // Create recipe with username and tags
-    const recipeWithUsernameAndTags = {
+    // Get profiles for comment users
+    const { data: commentProfiles, error: commentProfilesError } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', commentUserIds);
+
+    // Create a map of user_id -> profile for efficient lookup
+    const profileMap = commentProfiles && !commentProfilesError
+      ? commentProfiles.reduce((map, profile) => {
+          map[profile.id] = profile;
+          return map;
+        }, {} as {[key: string]: { username: string; avatar_url: string }})
+      : {};
+
+    // Create recipe with username, tags, and comments
+    const recipeWithDetails = {
       ...recipe,
       username: profileError ? undefined : profile.username,
-      tags: tagsError ? [] : recipeTags.map(rt => rt.tag)
+      avatar_url: profileError ? undefined : profile.avatar_url,
+      tags: tagsError ? [] : recipeTags.map(rt => rt.tag),
+      recent_comments: commentsError ? [] : comments.map((comment: RecipeComment) => ({
+        id: comment.id,
+        content: comment.content,
+        created_at: comment.created_at,
+        user: {
+          username: profileMap[comment.user_id]?.username || 'Unknown',
+          avatar_url: profileMap[comment.user_id]?.avatar_url || '/default-avatar.png'
+        }
+      }))
     };
     
-    return { data: recipeWithUsernameAndTags, error: null };
+    return { data: recipeWithDetails, error: null };
   },
   
   /**

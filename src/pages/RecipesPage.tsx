@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import type { Recipe } from '../services/recipeService';
 import { formatDistanceToNow } from 'date-fns';
 import { createSlug } from '../utils/slugify';
+import { MessageCircle } from 'lucide-react';
 
 // Memoize individual recipe card to prevent unnecessary re-renders
 const RecipeCard = memo(({ 
@@ -397,14 +398,130 @@ const RecipesPage = () => {
         ) : filteredRecipes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map(recipe => (
-              <RecipeCard
+              <div
                 key={recipe.id}
-                recipe={recipe}
-                bookmarked={bookmarks[recipe.id] || false}
-                bookmarkLoading={bookmarkLoading[recipe.id] || false}
-                onToggleBookmark={handleToggleBookmark}
-                onRecipeClick={handleRecipeClick}
-              />
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-transform hover:transform hover:scale-105 cursor-pointer hover:shadow-lg relative"
+              >
+                <Link 
+                  to={`/recipes/${createSlug(recipe.title)}`}
+                  className="block"
+                >
+                  <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
+                    {recipe.imageUrl ? (
+                      <img
+                        src={recipe.imageUrl}
+                        alt={recipe.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-gray-400 dark:text-white">No image</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                <div className="p-4">
+                  <Link 
+                    to={`/recipes/${createSlug(recipe.title)}`}
+                    className="block"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                      {recipe.title}
+                    </h3>
+                  </Link>
+
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span className="dark:text-gray-400">{recipe.username}</span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    {recipe.time && (
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="dark:text-gray-400">{recipe.time} mins</span>
+                      </div>
+                    )}
+
+                    {recipe.servings && (
+                      <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 dark:text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span className="dark:text-gray-400">{recipe.servings} servings</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  {recipe.tags && recipe.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {recipe.tags.slice(0, 3).map((tag: string, tagIndex: number) => (
+                        <span 
+                          key={tagIndex} 
+                          className="inline-block px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTagClick(tag);
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {recipe.tags.length > 3 && (
+                        <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                          +{recipe.tags.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Comments section */}
+                  <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <Link
+                      to={`/recipes/${createSlug(recipe.title)}#comments`}
+                      className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-2"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      {recipe.comments_count || 0} Comments
+                    </Link>
+                    
+                    {recipe.comments_count > 0 && (
+                      <div className="space-y-2">
+                        {recipe.recent_comments?.slice(0, 3).map((comment: any) => (
+                          <div key={comment.id} className="flex items-start space-x-2 text-sm">
+                            <img
+                              src={comment.user?.avatar_url || '/default-avatar.png'}
+                              alt={comment.user?.username}
+                              className="w-6 h-6 rounded-full"
+                            />
+                            <div className="flex-1">
+                              <span className="font-medium">{comment.user?.username}</span>
+                              <p className="text-gray-600 dark:text-gray-400 line-clamp-2">
+                                {comment.content}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {recipe.comments_count > 3 && (
+                          <Link
+                            to={`/recipes/${createSlug(recipe.title)}#comments`}
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                          >
+                            View all {recipe.comments_count} comments
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
