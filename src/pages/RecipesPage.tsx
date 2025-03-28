@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { recipeService, Recipe } from '../services/recipeService';
-import { formatDistanceToNow } from 'date-fns';
 import { createSlug } from '../utils/slugify';
 import { MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
