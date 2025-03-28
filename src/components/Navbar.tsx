@@ -392,6 +392,23 @@ const Navbar = () => {
 
           {/* Mobile controls - Only shown on actual mobile devices */}
           <div className="md:hidden flex items-center space-x-4">
+
+          {/*Mobile Menu PFP*/}
+           <div className="w-9 h-9 overflow-hidden rounded-full border-2 border-white/40 transition-all duration-300 hover:border-white/70 shadow-md">
+                    {avatarUrl ? (
+                      <img 
+                        src={avatarUrl} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover"
+                        onError={() => setAvatarUrl(null)}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center">
+                        <span className="text-sm font-medium text-white">{getInitial()}</span>
+                      </div>
+                    )}
+                  </div>
+
             {/* Mobile menu button */}
             <motion.button 
               className="text-white focus:outline-none focus:ring-2 focus:ring-white/50 rounded p-1"
