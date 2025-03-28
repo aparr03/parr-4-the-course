@@ -87,6 +87,7 @@ export default {
         'slide-in-right': 'slideInRight 0.5s ease-out',
         'bounce-subtle': 'bounceSubtle 2s infinite',
         'pulse-subtle': 'pulseSubtle 3s infinite',
+        'spin-slow': 'spin 3s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -127,6 +128,6 @@ export default {
   },
   plugins: [
     require('@tailwindcss/forms'),
-    // Any other plugins you might have
+    require('tailwind-scrollbar')({ nocompatible: true }),
   ],
 }

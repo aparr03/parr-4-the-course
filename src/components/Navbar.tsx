@@ -177,21 +177,27 @@ const Navbar = () => {
   };
 
   const mobileMenuVariants = {
-    hidden: { height: 0, opacity: 0 },
+    hidden: { 
+      opacity: 0,
+      y: -20,
+      transition: {
+        duration: 0.2
+      }
+    },
     visible: { 
-      height: "auto", 
       opacity: 1,
-      transition: { 
-        height: { duration: 0.3 },
-        opacity: { duration: 0.2, delay: 0.1 }
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
       }
     },
     exit: { 
-      height: 0, 
       opacity: 0,
-      transition: { 
-        height: { duration: 0.3 },
-        opacity: { duration: 0.2 }
+      y: -20,
+      transition: {
+        duration: 0.2,
+        ease: "easeIn"
       }
     }
   };
@@ -296,6 +302,7 @@ const Navbar = () => {
                 </motion.button>
 
                 {/* User menu dropdown with enhanced styling */}
+                
                 <AnimatePresence>
                   {userMenuOpen && (
                     <motion.div 
@@ -394,20 +401,22 @@ const Navbar = () => {
           <div className="md:hidden flex items-center space-x-4">
 
           {/*Mobile Menu PFP*/}
-           <div className="w-9 h-9 overflow-hidden rounded-full border-2 border-white/40 transition-all duration-300 hover:border-white/70 shadow-md">
-                    {avatarUrl ? (
-                      <img 
-                        src={avatarUrl} 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover"
-                        onError={() => setAvatarUrl(null)}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center">
-                        <span className="text-sm font-medium text-white">{getInitial()}</span>
-                      </div>
-                    )}
+           {user && (
+              <div className="w-9 h-9 overflow-hidden rounded-full border-2 border-white/40 transition-all duration-300 hover:border-white/70 shadow-md">
+                {avatarUrl ? (
+                  <img 
+                    src={avatarUrl} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarUrl(null)}
+                  />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">{getInitial()}</span>
                   </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile menu button */}
             <motion.button 
@@ -452,15 +461,18 @@ const Navbar = () => {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            className="md:hidden overflow-hidden bg-gradient-to-b from-blue-700/95 to-blue-600/95 dark:from-gray-900/95 dark:to-gray-800/95 backdrop-blur-md shadow-lg"
+            className="md:hidden fixed top-[72px] left-0 right-0 bottom-0 bg-gradient-to-b from-blue-700/95 to-blue-600/95 dark:from-gray-900/95 dark:to-gray-800/95 backdrop-blur-md shadow-lg overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent"
             variants={mobileMenuVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
+            style={{
+              maxHeight: 'calc(100vh - 72px)',
+            }}
           >
-            <div className="container mx-auto px-4 py-4 flex flex-col space-y-2">
+            <div className="container mx-auto px-4 py-4 flex flex-col space-y-2 min-h-full">
               {/* Theme toggle in mobile menu */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 sticky top-0 bg-inherit z-10">
                 <span className="text-white/90">Theme</span>
                 <motion.button
                   onClick={toggleTheme}
@@ -479,123 +491,125 @@ const Navbar = () => {
                 </motion.button>
               </div>
 
-              {/* Mobile navigation items */}
-              {navigationItems.map((item) => (
-                <motion.div
-                  key={item.name}
-                  whileHover={{ x: 5 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Link 
-                    to={item.href} 
-                    className={`block px-4 py-3 rounded-lg transition-colors duration-300 ${
-                      isActive(item.href) 
-                        ? 'bg-white/20 dark:bg-gray-600 text-white font-medium shadow-inner' 
-                        : 'text-white/90 hover:text-white'
-                    }`}
+              <div className="overflow-y-auto flex-1">
+                {/* Mobile navigation items */}
+                {navigationItems.map((item) => (
+                  <motion.div
+                    key={item.name}
+                    whileHover={{ x: 5 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    {item.name}
-                  </Link>
-                </motion.div>
-              ))}
-              
-              {/* User-specific options */}
-              {user ? (
-                <>
-                  <div className="pt-3 border-t border-white/10">
-                    {[
-                      { 
-                        to: "/profile", 
-                        label: "Your Profile",
-                        icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                      },
-                      { 
-                        to: "/bookmarks", 
-                        label: "Bookmarked Recipes",
-                        icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                      },
-                      { 
-                        to: "/add-recipe", 
-                        label: "Add Recipe",
-                        icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                      }
-                    ].map(item => (
-                      <motion.div
-                        key={item.to}
-                        whileHover={{ x: 5 }}
-                        transition={{ duration: 0.2 }}
-                        className="mb-2"
-                      >
-                        <Link 
-                          to={item.to}
-                          className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
+                    <Link 
+                      to={item.href} 
+                      className={`block px-4 py-3 rounded-lg transition-colors duration-300 ${
+                        isActive(item.href) 
+                          ? 'bg-white/20 dark:bg-gray-600 text-white font-medium shadow-inner' 
+                          : 'text-white/90 hover:text-white'
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  </motion.div>
+                ))}
+                
+                {/* User-specific options */}
+                {user ? (
+                  <>
+                    <div className="pt-3 border-t border-white/10">
+                      {[
+                        { 
+                          to: "/profile", 
+                          label: "Your Profile",
+                          icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        },
+                        { 
+                          to: "/bookmarks", 
+                          label: "Bookmarked Recipes",
+                          icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                        },
+                        { 
+                          to: "/add-recipe", 
+                          label: "Add Recipe",
+                          icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        }
+                      ].map(item => (
+                        <motion.div
+                          key={item.to}
+                          whileHover={{ x: 5 }}
+                          transition={{ duration: 0.2 }}
+                          className="mb-2"
                         >
-                          {item.icon}
-                          {item.label}
-                        </Link>
-                      </motion.div>
-                    ))}
+                          <Link 
+                            to={item.to}
+                            className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
+                          >
+                            {item.icon}
+                            {item.label}
+                          </Link>
+                        </motion.div>
+                      ))}
+                      
+                      {isAdmin && (
+                        <motion.div
+                          whileHover={{ x: 5 }}
+                          transition={{ duration: 0.2 }}
+                          className="mb-2"
+                        >
+                          <Link 
+                            to="/admin"
+                            className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            Admin Dashboard
+                          </Link>
+                        </motion.div>
+                      )}
+                    </div>
                     
-                    {isAdmin && (
-                      <motion.div
-                        whileHover={{ x: 5 }}
-                        transition={{ duration: 0.2 }}
-                        className="mb-2"
+                    <motion.div
+                      whileHover={{ x: 5 }}
+                      transition={{ duration: 0.2 }}
+                      className="pt-2"
+                    >
+                      <button 
+                        onClick={() => signOut()}
+                        className="w-full text-left px-4 py-3 rounded-lg border border-white/20 text-white transition-colors duration-300 hover:bg-white/10 dark:hover:bg-gray-600 flex items-center"
                       >
-                        <Link 
-                          to="/admin"
-                          className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                          Admin Dashboard
-                        </Link>
-                      </motion.div>
-                    )}
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Sign out
+                      </button>
+                    </motion.div>
+                  </>
+                ) : (
+                  <div className="pt-3 border-t border-white/10 flex flex-col space-y-3">
+                    <motion.div
+                      whileHover={{ x: 5 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Link 
+                        to="/login"
+                        className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-2 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                        Sign in
+                      </Link>
+                    </motion.div>
+                    
+                    <motion.div
+                      whileHover={{ x: 2, y: -2 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Link 
+                        to="/register"
+                        className="block px-4 py-3 rounded-lg bg-white text-blue-600 dark:bg-blue-500 dark:text-white transition-all duration-300 hover:bg-blue-50 dark:hover:bg-blue-600 text-center font-medium shadow-md flex items-center justify-center"
+                      >
+                        <svg className="w-4 h-4 mr-2 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                        Sign up
+                      </Link>
+                    </motion.div>
                   </div>
-                  
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    transition={{ duration: 0.2 }}
-                    className="pt-2"
-                  >
-                    <button 
-                      onClick={() => signOut()}
-                      className="w-full text-left px-4 py-3 rounded-lg border border-white/20 text-white transition-colors duration-300 hover:bg-white/10 dark:hover:bg-gray-600 flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                      Sign out
-                    </button>
-                  </motion.div>
-                </>
-              ) : (
-                <div className="pt-3 border-t border-white/10 flex flex-col space-y-3">
-                  <motion.div
-                    whileHover={{ x: 5 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Link 
-                      to="/login"
-                      className="block px-4 py-3 rounded-lg text-white/90 hover:bg-white/10 dark:hover:bg-gray-600 hover:text-white transition-colors duration-300 flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
-                      Sign in
-                    </Link>
-                  </motion.div>
-                  
-                  <motion.div
-                    whileHover={{ x: 2, y: -2 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Link 
-                      to="/register"
-                      className="block px-4 py-3 rounded-lg bg-white text-blue-600 dark:bg-blue-500 dark:text-white transition-all duration-300 hover:bg-blue-50 dark:hover:bg-blue-600 text-center font-medium shadow-md flex items-center justify-center"
-                    >
-                      <svg className="w-4 h-4 mr-2 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                      Sign up
-                    </Link>
-                  </motion.div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </motion.div>
         )}
