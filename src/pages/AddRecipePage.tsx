@@ -14,11 +14,13 @@ const AddRecipePage = () => {
   const { } = useAuth();
   const [recipe, setRecipe] = useState({
     title: '',
+    description: '',
     ingredients: '',
     instructions: '',
     time: '',
     servings: '',
-    imageUrl: ''
+    imageUrl: '',
+    difficulty: 'easy' as 'easy' | 'medium' | 'hard'
   });
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,11 +94,13 @@ const AddRecipePage = () => {
         setRecipeId(data.id);
         setRecipe({
           title: data.title || '',
+          description: data.description || '',
           ingredients: data.ingredients || '',
           instructions: data.instructions || '',
           time: data.time || '',
           servings: data.servings || '',
-          imageUrl: data.imageUrl || ''
+          imageUrl: data.imageUrl || '',
+          difficulty: data.difficulty || 'easy'
         });
         
         // Set tags if they exist
@@ -186,37 +190,32 @@ const AddRecipePage = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
-      let finalRecipe = { ...recipe, tags };
-      
-      // If there's an image file, upload it first
-      if (imageFile) {
-        setUploadingImage(true);
-        try {
-          const { publicUrl } = await recipeService.uploadRecipeImage(imageFile);
-          finalRecipe.imageUrl = publicUrl;
-          console.log('Image uploaded successfully:', publicUrl);
-        } catch (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          setError('Failed to upload image. Please try again or use an image URL instead.');
-          setLoading(false);
-          setUploadingImage(false);
-          return;
-        }
-        setUploadingImage(false);
-      }
-      
+      // Convert form data to match Recipe type
+      const recipeData = {
+        title: recipe.title,
+        description: recipe.description,
+        ingredients: recipe.ingredients.split('\n').filter(i => i.trim()),
+        instructions: recipe.instructions.split('\n').filter(i => i.trim()),
+        time: parseInt(recipe.time, 10) || 0,
+        servings: parseInt(recipe.servings, 10) || 0,
+        difficulty: recipe.difficulty,
+        imageUrl: recipe.imageUrl,
+        tags: tags,
+        updated_at: new Date().toISOString()
+      };
+
       let result;
       
       // If we're in edit mode, update the existing recipe
       if (isEditMode && recipeId) {
         console.log('Updating existing recipe:', recipeId);
-        result = await recipeService.updateRecipe(recipeId, finalRecipe);
+        result = await recipeService.updateRecipe(recipeId, recipeData);
       } else {
         // Otherwise create a new recipe
         console.log('Creating new recipe');
-        result = await recipeService.createRecipe(finalRecipe);
+        result = await recipeService.createRecipe(recipeData);
       }
       
       const { data, error } = result;
@@ -228,7 +227,7 @@ const AddRecipePage = () => {
       console.log(`Recipe ${isEditMode ? 'updated' : 'saved'} successfully:`, data);
       
       // Navigate to recipes page after successful save
-      navigate('/recipes');
+      navigate(`/recipes/${createSlug(data.title)}`);
     } catch (err: any) {
       console.error(`Error ${isEditMode ? 'updating' : 'saving'} recipe:`, err);
       setError(err.message || `An error occurred while ${isEditMode ? 'updating' : 'saving'} the recipe`);
@@ -251,56 +250,56 @@ const AddRecipePage = () => {
         <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-8">
           {isEditMode ? 'Edit Recipe' : 'Add New Recipe'}
         </h1>
-        
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between">
-            {Array.from({ length: totalSteps }).map((_, index) => (
-              <button 
-                key={index}
-                onClick={() => moveToStep(index + 1)}
-                className={`flex-1 text-center font-medium ${isCurrentStep(index + 1) ? 'text-blue-600' : 'text-gray-400'}`}
-              >
-                Step {index + 1}
-              </button>
-            ))}
-          </div>
-          <div className="h-2 w-full bg-gray-200 rounded-full mt-2">
-            <div 
-              className="h-full bg-blue-600 rounded-full transition-all duration-300"
-              style={{ width: `${(activeStep / totalSteps) * 100}%` }}
-            ></div>
-          </div>
+      
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex justify-between">
+          {Array.from({ length: totalSteps }).map((_, index) => (
+            <button 
+              key={index}
+              onClick={() => moveToStep(index + 1)}
+              className={`flex-1 text-center font-medium ${isCurrentStep(index + 1) ? 'text-blue-600' : 'text-gray-400'}`}
+            >
+              Step {index + 1}
+            </button>
+          ))}
         </div>
-        
-        {/* Error message */}
-        {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
-        
+        <div className="h-2 w-full bg-gray-200 rounded-full mt-2">
+          <div 
+            className="h-full bg-blue-600 rounded-full transition-all duration-300"
+            style={{ width: `${(activeStep / totalSteps) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+      
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+      
         <div className="bg-white dark:bg-gray-700/90 shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Step 1: Basic Information */}
-            <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(1) ? 'block opacity-100' : 'hidden opacity-0'}`}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Step 1: Basic Information */}
+          <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(1) ? 'block opacity-100' : 'hidden opacity-0'}`}>
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Basic Information</h2>
-              
-              <div>
+            
+            <div>
                 <label htmlFor="title" className="block mb-2 font-medium text-gray-700 dark:text-white">Recipe Title</label>
-                <input
-                  id="title"
-                  name="title"
-                  type="text"
-                  required
-                  value={recipe.title}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="e.g. Grandma's Apple Pie"
-                />
-              </div>
-              
-              <div>
+              <input
+                id="title"
+                name="title"
+                type="text"
+                required
+                value={recipe.title}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="e.g. Grandma's Apple Pie"
+              />
+            </div>
+            
+            <div>
                 <label htmlFor="imageUrl" className="block mb-2 font-medium text-gray-700 dark:text-white">Recipe Image</label>
                 <div className="space-y-3">
                   <input 
@@ -354,13 +353,13 @@ const AddRecipePage = () => {
                     <div className="flex-grow border-t border-gray-300"></div>
                   </div>
                   
-                  <input
-                    id="imageUrl"
-                    name="imageUrl"
-                    type="url"
-                    value={recipe.imageUrl}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              <input
+                id="imageUrl"
+                name="imageUrl"
+                type="url"
+                value={recipe.imageUrl}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
                   />
                 </div>
@@ -433,148 +432,148 @@ const AddRecipePage = () => {
                     Tags help users find your recipe. Add up to 5 tags.
                   </p>
                 </div>
-              </div>
-              
-              <div className="flex justify-between pt-4">
-                <div></div>
-                <button
-                  type="button"
-                  onClick={() => moveToStep(2)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
-                >
-                  <span className="text-white">Next Step</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
             </div>
             
-            {/* Step 2: Ingredients */}
-            <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(2) ? 'block opacity-100' : 'hidden opacity-0'}`}>
+            <div className="flex justify-between pt-4">
+              <div></div>
+              <button
+                type="button"
+                onClick={() => moveToStep(2)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
+              >
+                  <span className="text-white">Next Step</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          {/* Step 2: Ingredients */}
+          <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(2) ? 'block opacity-100' : 'hidden opacity-0'}`}>
               <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Ingredients</h2>
-              
+            
+            <div>
+              <label htmlFor="ingredients" className="block mb-2 font-medium text-gray-700">Ingredients</label>
+              <textarea
+                id="ingredients"
+                name="ingredients"
+                required
+                value={recipe.ingredients}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                rows={6}
+                placeholder="Enter ingredients, one per line&#10;e.g.&#10;2 cups flour&#10;1 cup sugar&#10;1/2 tsp salt"
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="ingredients" className="block mb-2 font-medium text-gray-700">Ingredients</label>
-                <textarea
-                  id="ingredients"
-                  name="ingredients"
-                  required
-                  value={recipe.ingredients}
+                  <label htmlFor="time" className="block mb-2 font-medium text-gray-700 dark:text-white">Cooking Time (minutes)</label>
+                <input
+                  id="time"
+                  name="time"
+                  type="number"
+                  value={recipe.time}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  rows={6}
-                  placeholder="Enter ingredients, one per line&#10;e.g.&#10;2 cups flour&#10;1 cup sugar&#10;1/2 tsp salt"
+                  min="1"
+                  placeholder="30"
                 />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="time" className="block mb-2 font-medium text-gray-700 dark:text-white">Cooking Time (minutes)</label>
-                  <input
-                    id="time"
-                    name="time"
-                    type="number"
-                    value={recipe.time}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    min="1"
-                    placeholder="30"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="servings" className="block mb-2 font-medium text-gray-700">Servings</label>
-                  <input
-                    id="servings"
-                    name="servings"
-                    type="number"
-                    value={recipe.servings}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    min="1"
-                    placeholder="4"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={() => moveToStep(1)}
-                  className="px-6 py-3 bg-gray-400 dark:text-white text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-white">Previous</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveToStep(3)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
-                >
-                  <span className="text-white">Next Step</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+              <div>
+                <label htmlFor="servings" className="block mb-2 font-medium text-gray-700">Servings</label>
+                <input
+                  id="servings"
+                  name="servings"
+                  type="number"
+                  value={recipe.servings}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  min="1"
+                  placeholder="4"
+                />
               </div>
             </div>
             
-            {/* Step 3: Instructions */}
-            <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(3) ? 'block opacity-100' : 'hidden opacity-0'}`}>
-              <h2 className="text-xl font-semibold mb-4 dark:text-white text-gray-800">Cooking Instructions</h2>
-              
-              <div>
-                <label htmlFor="instructions" className="block mb-2 font-medium text-gray-700">Instructions</label>
-                <textarea
-                  id="instructions"
-                  name="instructions"
-                  required
-                  value={recipe.instructions}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  rows={8}
-                  placeholder="Enter step by step instructions&#10;e.g.&#10;1. Preheat oven to 350°F&#10;2. Mix all dry ingredients&#10;3. Add wet ingredients and stir until combined"
-                />
-              </div>
-              
-              <div className="flex justify-between pt-4">
-                <button
-                  type="button"
-                  onClick={() => moveToStep(2)}
+            <div className="flex justify-between pt-4">
+              <button
+                type="button"
+                onClick={() => moveToStep(1)}
                   className="px-6 py-3 bg-gray-400 dark:text-white text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
-                >
+              >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
+                  <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
                   <span className="text-white">Previous</span>
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
+              </button>
+              <button
+                type="button"
+                onClick={() => moveToStep(3)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
+              >
+                  <span className="text-white">Next Step</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          {/* Step 3: Instructions */}
+          <div className={`space-y-6 transition-opacity duration-300 ${isCurrentStep(3) ? 'block opacity-100' : 'hidden opacity-0'}`}>
+              <h2 className="text-xl font-semibold mb-4 dark:text-white text-gray-800">Cooking Instructions</h2>
+            
+            <div>
+              <label htmlFor="instructions" className="block mb-2 font-medium text-gray-700">Instructions</label>
+              <textarea
+                id="instructions"
+                name="instructions"
+                required
+                value={recipe.instructions}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                rows={8}
+                placeholder="Enter step by step instructions&#10;e.g.&#10;1. Preheat oven to 350°F&#10;2. Mix all dry ingredients&#10;3. Add wet ingredients and stir until combined"
+              />
+            </div>
+            
+            <div className="flex justify-between pt-4">
+              <button
+                type="button"
+                onClick={() => moveToStep(2)}
+                  className="px-6 py-3 bg-gray-400 dark:text-white text-gray-800 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+                  <span className="text-white">Previous</span>
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform transition hover:-translate-y-0.5 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
+              >
+                {loading ? (
+                  <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
                       <span>{uploadingImage ? 'Uploading Image...' : (isEditMode ? 'Updating Recipe...' : 'Saving Recipe...')}</span>
-                    </>
-                  ) : (
-                    <>
+                  </>
+                ) : (
+                  <>
                       <span className="text-white">{isEditMode ? 'Update Recipe' : 'Save Recipe'}</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </>
-                  )}
-                </button>
-              </div>
+                    </svg>
+                  </>
+                )}
+              </button>
             </div>
-          </form>
+          </div>
+        </form>
         </div>
       </div>
     </div>

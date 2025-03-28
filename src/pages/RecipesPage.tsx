@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { recipeService } from '../services/recipeService';
+import { recipeService, Recipe } from '../services/recipeService';
 import { bookmarkService } from '../services/bookmarkService';
 import { useAuth } from '../context/AuthContext';
-import type { Recipe } from '../services/recipeService';
 import { formatDistanceToNow } from 'date-fns';
 import { createSlug } from '../utils/slugify';
 import { MessageCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 // Memoize individual recipe card to prevent unnecessary re-renders
 const RecipeCard = memo(({ 
@@ -130,68 +130,31 @@ const RecipeCard = memo(({
 
 const RecipesPage = () => {
   const { user } = useAuth();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [bookmarks, setBookmarks] = useState<Record<string, boolean>>({});
-  const [bookmarkLoading, setBookmarkLoading] = useState<Record<string, boolean>>({});
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Prevent loading animation when switching tabs
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !isInitialLoad) {
-        // Don't show loading indicator when returning to tab
-        setLoading(false);
-      }
-    };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isInitialLoad]);
+  // Use useQuery with proper typing and error handling
+  const { data: recipes = [], isLoading, error: recipesError } = useQuery({
+    queryKey: ['recipes'],
+    queryFn: async () => {
+      const result = await recipeService.getAllRecipes();
+      if (result.error) throw result.error;
+      return result.data || [];
+    }
+  });
 
-  // Memoize the loadRecipes function to prevent unnecessary re-renders
-  const loadRecipes = useCallback(async () => {
-    if (isInitialLoad) {
-      setLoading(true);
-    }
-    setError(null);
-    
-    try {
-      const { data, error } = await recipeService.getAllRecipes();
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data) {
-        setRecipes(data);
-        // Initial filtering without re-running the filter logic
-        setFilteredRecipes(data);
-        
-        // If user is logged in, check bookmark status for each recipe
-        if (user) {
-          await checkBookmarkStatus(data);
-        }
-      }
-    } catch (err: any) {
-      console.error('Error loading recipes:', err);
-      setError(err.message || 'Failed to load recipes');
-    } finally {
-      setLoading(false);
-      setIsInitialLoad(false);
-    }
-  }, [user, isInitialLoad]);
-  
+  // Filter recipes based on search term and selected tag
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesSearch = recipe.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTag = !selectedTag || (recipe.tags && recipe.tags.includes(selectedTag));
+    return matchesSearch && matchesTag;
+  });
+
+  // Load available tags
   const loadTags = useCallback(async () => {
     try {
       const { data, error } = await recipeService.getAllTags();
@@ -203,14 +166,13 @@ const RecipesPage = () => {
       console.error('Error loading tags:', err);
     }
   }, []);
-  
+
   // Use a useEffect with a cleanup function for better performance
   useEffect(() => {
-    // Single array for all recipes
     let isMounted = true;
     
     const loadData = async () => {
-      await Promise.all([loadRecipes(), loadTags()]);
+      await loadTags();
     };
     
     loadData();
@@ -225,68 +187,7 @@ const RecipesPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [loadRecipes, loadTags, location.search]);
-  
-  // Memoize filter function to improve performance
-  useEffect(() => {
-    if (recipes.length > 0) {
-      const filtered = recipes.filter(recipe => {
-        const matchesSearch = recipe.title.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesTag = !selectedTag || (recipe.tags && recipe.tags.includes(selectedTag));
-        return matchesSearch && matchesTag;
-      });
-      setFilteredRecipes(filtered);
-    }
-  }, [recipes, searchTerm, selectedTag]);
-
-  const checkBookmarkStatus = async (recipesToCheck: Recipe[]) => {
-    if (!user) return;
-    
-    const newBookmarks: Record<string, boolean> = {};
-    
-    await Promise.all(
-      recipesToCheck.map(async (recipe) => {
-        try {
-          const { bookmarked } = await bookmarkService.isBookmarked(recipe.id);
-          newBookmarks[recipe.id] = bookmarked;
-        } catch (err) {
-          console.error(`Error checking bookmark for recipe ${recipe.id}:`, err);
-        }
-      })
-    );
-    
-    setBookmarks(newBookmarks);
-  };
-
-  const handleToggleBookmark = async (recipeId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    
-    if (!user) {
-      // Prompt user to log in
-      if (window.confirm('You need to be logged in to bookmark recipes. Would you like to log in now?')) {
-        navigate('/login');
-      }
-      return;
-    }
-    
-    setBookmarkLoading(prev => ({ ...prev, [recipeId]: true }));
-    
-    try {
-      const { data } = await bookmarkService.toggleBookmark(recipeId);
-      
-      if (data) {
-        setBookmarks(prev => ({
-          ...prev,
-          [recipeId]: data.bookmarked
-        }));
-      }
-    } catch (err: any) {
-      console.error('Error toggling bookmark:', err);
-    } finally {
-      setBookmarkLoading(prev => ({ ...prev, [recipeId]: false }));
-    }
-  };
+  }, [loadTags, location.search]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -308,11 +209,6 @@ const RecipesPage = () => {
       search: params.toString()
     }, { replace: true });
   };
-
-  const handleRecipeClick = useCallback((recipe: Recipe) => {
-    const slug = createSlug(recipe.title);
-    navigate(`/recipes/${slug}`);
-  }, [navigate]);
 
   return (
     <div className="max-w-7xl mx-auto p-4 pb-32">
@@ -384,20 +280,20 @@ const RecipesPage = () => {
           )}
         </div>
         
-        {error && (
+        {recipesError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
             <p className="font-bold">Error</p>
-            <p>{error}</p>
+            <p>{recipesError.message}</p>
           </div>
         )}
         
-        {loading && isInitialLoad ? (
+        {isLoading && isInitialLoad ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         ) : filteredRecipes.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecipes.map(recipe => (
+            {filteredRecipes.map((recipe: Recipe) => (
               <div
                 key={recipe.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-transform hover:transform hover:scale-105 cursor-pointer hover:shadow-lg relative"
@@ -484,15 +380,12 @@ const RecipesPage = () => {
 
                   {/* Comments section */}
                   <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <Link
-                      to={`/recipes/${createSlug(recipe.title)}#comments`}
-                      className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-2"
-                    >
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                       <MessageCircle className="w-4 h-4 mr-1" />
-                      {recipe.comments_count || 0} Comments
-                    </Link>
+                      <span>{recipe.comments_count ?? 0} comments</span>
+                    </div>
                     
-                    {recipe.comments_count > 0 && (
+                    {(recipe.comments_count ?? 0) > 0 && (
                       <div className="space-y-2">
                         {recipe.recent_comments?.slice(0, 3).map((comment: any) => (
                           <div key={comment.id} className="flex items-start space-x-2 text-sm">
@@ -509,7 +402,7 @@ const RecipesPage = () => {
                             </div>
                           </div>
                         ))}
-                        {recipe.comments_count > 3 && (
+                        {(recipe.comments_count ?? 0) > 3 && (
                           <Link
                             to={`/recipes/${createSlug(recipe.title)}#comments`}
                             className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"

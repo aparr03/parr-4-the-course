@@ -37,11 +37,6 @@ interface RecipeComment {
   recipe_id: string;
 }
 
-interface RecipeLikeCount {
-  recipe_id: string;
-  count: number;
-}
-
 // Define bucket name in one place for easy changes
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
 

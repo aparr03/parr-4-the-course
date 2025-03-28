@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomePage from './pages/HomePage';
 import AddRecipePage from './pages/AddRecipePage';
 import RecipesPage from './pages/RecipesPage';
@@ -17,6 +18,16 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { useTheme } from './context/ThemeContext';
 import BookmarkedRecipesPage from './pages/BookmarkedRecipesPage';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function App() {
   const location = useLocation();
@@ -44,67 +55,69 @@ function App() {
   }, [location.pathname]);
   
   return (
-    <div className={`flex flex-col min-h-screen transition-opacity duration-150 ${
-      loading ? 'opacity-80' : 'opacity-100'
-    } ${
-      theme === 'dark' 
-        ? 'bg-gray-900 text-white' 
-        : 'bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900'
-    }`}>
-      <Navbar />
-      <main className="flex-grow px-4 py-8 md:py-12 mt-16">
-        <div className="container mx-auto max-w-7xl">
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/recipes" element={<RecipesPage />} />
-            <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
-            <Route path="/forgot-password" element={<PasswordResetRequestPage />} />
-            <Route path="/reset-password" element={<PasswordResetConfirmPage />} />
-            
-            {/* Protected routes */}
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/edit-profile" element={
-              <ProtectedRoute>
-                <EditProfilePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/add-recipe" element={
-              <ProtectedRoute>
-                <AddRecipePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/edit-recipe/:slug" element={
-              <ProtectedRoute>
-                <AddRecipePage />
-              </ProtectedRoute>
-            } />
-            <Route path="/bookmarks" element={
-              <ProtectedRoute>
-                <BookmarkedRecipesPage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Admin route */}
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <AdminPage />
-              </ProtectedRoute>
-            } />
-            
-            {/* 404 route */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </div>
-      </main>
-      <Footer />
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div className={`flex flex-col min-h-screen transition-opacity duration-150 ${
+        loading ? 'opacity-80' : 'opacity-100'
+      } ${
+        theme === 'dark' 
+          ? 'bg-gray-900 text-white' 
+          : 'bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900'
+      }`}>
+        <Navbar />
+        <main className="flex-grow px-4 py-8 md:py-12 mt-16">
+          <div className="container mx-auto max-w-7xl">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/recipes" element={<RecipesPage />} />
+              <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
+              <Route path="/forgot-password" element={<PasswordResetRequestPage />} />
+              <Route path="/reset-password" element={<PasswordResetConfirmPage />} />
+              
+              {/* Protected routes */}
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/edit-profile" element={
+                <ProtectedRoute>
+                  <EditProfilePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/add-recipe" element={
+                <ProtectedRoute>
+                  <AddRecipePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/edit-recipe/:slug" element={
+                <ProtectedRoute>
+                  <AddRecipePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/bookmarks" element={
+                <ProtectedRoute>
+                  <BookmarkedRecipesPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin route */}
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminPage />
+                </ProtectedRoute>
+              } />
+              
+              {/* 404 route */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    </QueryClientProvider>
   );
 }
 
