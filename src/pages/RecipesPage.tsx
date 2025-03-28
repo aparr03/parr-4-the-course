@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { recipeService, Recipe } from '../services/recipeService';
-import { bookmarkService } from '../services/bookmarkService';
 import { useAuth } from '../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { createSlug } from '../utils/slugify';
@@ -129,10 +128,9 @@ const RecipeCard = memo(({
 });
 
 const RecipesPage = () => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isInitialLoad] = useState(true);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();

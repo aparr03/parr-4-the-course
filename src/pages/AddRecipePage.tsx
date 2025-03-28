@@ -1,12 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { recipeService } from '../services/recipeService';
 import { useAuth } from '../context/AuthContext';
-
-// Helper function to create a slug from a recipe title
-const createSlug = (title: string): string => {
-  return title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-};
+import { createSlug } from '../utils/slugify';
 
 const AddRecipePage = () => {
   const navigate = useNavigate();
@@ -28,9 +24,7 @@ const AddRecipePage = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
   const totalSteps = 3;
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tags, setTags] = useState<string[]>([]);
@@ -130,23 +124,9 @@ const AddRecipePage = () => {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return;
-    
-    const file = e.target.files[0];
-    
-    // Validate file type and size
-    if (!file.type.match('image.*')) {
-      setError('Please select an image file (png, jpg, jpeg)');
-      return;
-    }
-    
-    if (file.size > 5 * 1024 * 1024) { // 5MB max
-      setError('Image size should be less than 5MB');
-      return;
-    }
-    
-    setImageFile(file);
-    
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     // Create a preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -322,7 +302,6 @@ const AddRecipePage = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setImageFile(null);
                             setImagePreview(null);
                             if (fileInputRef.current) fileInputRef.current.value = '';
                           }}
@@ -560,11 +539,11 @@ const AddRecipePage = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                      <span>{uploadingImage ? 'Uploading Image...' : (isEditMode ? 'Updating Recipe...' : 'Saving Recipe...')}</span>
+                      <span>Saving Recipe...</span>
                   </>
                 ) : (
                   <>
-                      <span className="text-white">{isEditMode ? 'Update Recipe' : 'Save Recipe'}</span>
+                      <span className="text-white">Save Recipe</span>
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
