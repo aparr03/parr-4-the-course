@@ -257,22 +257,7 @@ export const recipeService = {
     // First, get user's recipes
     const { data: recipes, error } = await supabase
       .from('recipes')
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          avatar_url
-        ),
-        recipe_comments (
-          id,
-          content,
-          created_at,
-          profiles:user_id (
-            username,
-            avatar_url
-          )
-        )
-      `)
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
       
@@ -284,22 +269,79 @@ export const recipeService = {
     if (recipes && recipes.length > 0) {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('username')
+        .select('username, avatar_url')
         .eq('id', userId)
         .single();
         
       if (!profileError && profile) {
-        // Add username to each recipe
-        const recipesWithUsername = recipes.map(recipe => ({
+        // Add username and avatar_url to each recipe
+        const recipesWithDetails = recipes.map(recipe => ({
           ...recipe,
-          username: profile.username
+          username: profile.username,
+          avatar_url: profile.avatar_url
         }));
         
-        return { data: recipesWithUsername, error: null };
+        // Get recipe IDs
+        const recipeIds = recipes.map(recipe => recipe.id);
+        
+        // Fetch comments for these recipes
+        const { data: comments, error: commentsError } = await supabase
+          .from('recipe_comments')
+          .select(`
+            id,
+            recipe_id,
+            content,
+            created_at,
+            user_id
+          `)
+          .in('recipe_id', recipeIds)
+          .order('created_at', { ascending: false });
+          
+        if (!commentsError && comments) {
+          // Get unique user IDs from comments
+          const commentUserIds = [...new Set(comments.map(comment => comment.user_id))];
+          
+          // Get profiles for comment users
+          const { data: commentProfiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', commentUserIds);
+            
+          // Create a map of user_id -> profile
+          const profileMap = commentProfiles?.reduce((map, profile) => {
+            map[profile.id] = profile;
+            return map;
+          }, {} as {[key: string]: any}) || {};
+          
+          // Add comments to recipes
+          const recipesWithComments = recipesWithDetails.map(recipe => {
+            const recipeComments = comments
+              .filter(comment => comment.recipe_id === recipe.id)
+              .map(comment => ({
+                id: comment.id,
+                content: comment.content,
+                created_at: comment.created_at,
+                user: {
+                  username: profileMap[comment.user_id]?.username || 'Unknown User',
+                  avatar_url: profileMap[comment.user_id]?.avatar_url || '/default-avatar.png'
+                }
+              }));
+              
+            return {
+              ...recipe,
+              comments_count: recipeComments.length,
+              recent_comments: recipeComments.slice(0, 3)
+            };
+          });
+          
+          return { data: recipesWithComments, error: null };
+        }
+        
+        return { data: recipesWithDetails, error: null };
       }
     }
     
-    return { data: recipes, error };
+    return { data: recipes || [], error: null };
   },
   
   /**

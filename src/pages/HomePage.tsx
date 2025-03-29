@@ -43,7 +43,7 @@ const HomePage = () => {
         <h1 className="text-5xl font-extrabold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 py-1 leading-relaxed">
           Discover Amazing Recipes
         </h1>
-        <p className="max-w-2xl mx-auto text-lg text-white mb-8">
+        <p className="max-w-2xl mx-auto text-lg text-blue-400 dark:text-white mb-8">
           Your journey to culinary excellence begins here. Explore, create, and share your favorite recipes with our growing community.
         </p>
         <div className="flex justify-center space-x-4">

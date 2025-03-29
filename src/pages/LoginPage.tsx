@@ -165,7 +165,7 @@ const LoginPage = () => {
                   <span>Signing in...</span>
                 </>
               ) : (
-                <span className="dark:text-white">Sign in</span>
+                <span className="text-white">Sign in</span>
               )}
             </button>
           </div>

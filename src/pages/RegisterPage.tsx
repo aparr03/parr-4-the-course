@@ -278,7 +278,7 @@ const RegisterPage = () => {
                   <span>Creating Account...</span>
                 </>
               ) : (
-                <span className="dark:text-white">Create Account</span>
+                <span className="text-white">Create Account</span>
               )}
             </button>
           </div>
