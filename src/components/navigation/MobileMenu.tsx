@@ -19,7 +19,6 @@ interface MobileMenuProps {
 export const MobileMenu = ({
   isOpen,
   onClose,
-  isActive,
   username,
   isAdmin,
   onSignOut
