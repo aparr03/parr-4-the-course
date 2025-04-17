@@ -1,3 +1,12 @@
+/**
+ * AUTH MIDDLEWARE MODULE
+ * ---------------------
+ * This file contains middleware functions that handle authentication.
+ * It verifies JWT tokens and attaches user data to request objects.
+ * 
+ * Note: This is different from the auth.ts in routes folder, which defines API endpoints.
+ */
+
 import { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../lib/supabase.js';
 

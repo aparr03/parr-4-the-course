@@ -1,3 +1,13 @@
+/**
+ * AUTH ROUTES MODULE
+ * -----------------
+ * This file defines API endpoints related to authentication.
+ * It provides routes for user authentication operations.
+ * 
+ * Note: This is different from the auth.ts in middleware folder, which contains 
+ * authentication middleware functions.
+ */
+
 import express from 'express';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { authenticateUser } from '../middleware/auth.js';

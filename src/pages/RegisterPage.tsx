@@ -134,7 +134,7 @@ const RegisterPage = () => {
     <div className={`max-w-md mx-auto p-4 mt-20 transition-opacity duration-500 ${formVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-bold mb-2 text-blue-600">Create an Account</h1>
-        <p className="text-white">Join our community of food enthusiasts</p>
+        <p className="text-white dark:text-gray-400">Join our community of food enthusiasts</p>
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-8 transform transition-all duration-500 hover:shadow-xl">
