@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/button';
@@ -68,16 +68,35 @@ export const Comments: React.FC<CommentsProps> = ({ recipeId }) => {
         .select('id, username, avatar_url')
         .in('id', userIds);
 
+      // Fetch like counts for each comment
+      const commentIds = (commentsData as CommentData[]).map(comment => comment.id);
+      const { data: likesData } = await supabase
+        .from('recipe_comment_likes')
+        .select('comment_id')
+        .in('comment_id', commentIds);
+
+      // Create a map of comment_id -> like count
+      const likesCountMap = new Map<string, number>();
+      if (likesData) {
+        likesData.forEach(like => {
+          const count = likesCountMap.get(like.comment_id) || 0;
+          likesCountMap.set(like.comment_id, count + 1);
+        });
+      }
+      
       const profilesMap = new Map(profilesData?.map(profile => [profile.id, profile]) || []);
 
-      // Format comments with user data
+      // Format comments with user data and accurate like counts
       const formattedComments = (commentsData as CommentData[]).map(comment => {
         const profile = profilesMap.get(comment.user_id);
+        // Use the count from our map or fall back to the likes_count in the comment
+        const likeCount = likesCountMap.get(comment.id) || comment.likes_count || 0;
+        
         return {
           id: comment.id,
           content: comment.content,
           created_at: comment.created_at,
-          likes_count: comment.likes_count,
+          likes_count: likeCount,
           user: profile || { username: 'Unknown', avatar_url: '/default-avatar.png' },
           is_liked: likedCommentIds.has(comment.id)
         };
@@ -134,12 +153,22 @@ export const Comments: React.FC<CommentsProps> = ({ recipeId }) => {
   };
 
   const handleLikeComment = async (commentId: string) => {
-    if (!user) return;
+    if (!user) {
+      // Prompt user to log in
+      const confirmed = window.confirm('Please log in to like comments. Would you like to go to the login page?');
+      if (confirmed) {
+        window.location.href = '/login';
+      }
+      return;
+    }
 
     try {
-      const comment = comments.find(c => c.id === commentId);
-      if (!comment) return;
-
+      const commentIndex = comments.findIndex(c => c.id === commentId);
+      if (commentIndex === -1) return;
+      
+      const comment = comments[commentIndex];
+      const newComments = [...comments];
+      
       if (comment.is_liked) {
         // Unlike
         const { error } = await supabase
@@ -150,11 +179,13 @@ export const Comments: React.FC<CommentsProps> = ({ recipeId }) => {
 
         if (error) throw error;
 
-        setComments(comments.map(c =>
-          c.id === commentId
-            ? { ...c, is_liked: false, likes_count: c.likes_count - 1 }
-            : c
-        ));
+        // Update local state
+        newComments[commentIndex] = {
+          ...comment,
+          is_liked: false,
+          likes_count: Math.max(0, comment.likes_count - 1)
+        };
+        setComments(newComments);
       } else {
         // Like
         const { error } = await supabase
@@ -163,14 +194,18 @@ export const Comments: React.FC<CommentsProps> = ({ recipeId }) => {
 
         if (error) throw error;
 
-        setComments(comments.map(c =>
-          c.id === commentId
-            ? { ...c, is_liked: true, likes_count: c.likes_count + 1 }
-            : c
-        ));
+        // Update local state
+        newComments[commentIndex] = {
+          ...comment,
+          is_liked: true,
+          likes_count: comment.likes_count + 1
+        };
+        setComments(newComments);
       }
     } catch (error) {
       console.error('Error toggling comment like:', error);
+      // If there was an error, refresh comments to get the correct state
+      fetchComments();
     }
   };
 
@@ -238,9 +273,14 @@ export const Comments: React.FC<CommentsProps> = ({ recipeId }) => {
                     ? 'text-red-500'
                     : 'text-gray-500 dark:text-gray-400 hover:text-red-500'
                 }`}
+                aria-label={comment.is_liked ? "Unlike this comment" : "Like this comment"}
               >
-                <Heart className="w-4 h-4" />
-                <span>{comment.likes_count}</span>
+                <Heart 
+                  className="w-4 h-4 transition-colors" 
+                  fill={comment.is_liked ? "currentColor" : "none"} 
+                  stroke="currentColor"
+                />
+                <span className="font-medium">{comment.likes_count}</span>
               </button>
             </div>
           </div>

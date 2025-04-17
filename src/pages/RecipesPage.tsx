@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { recipeService, Recipe } from '../services/recipeService';
 import { createSlug } from '../utils/slugify';
-import { MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 const RecipesPage = () => {
@@ -24,7 +23,7 @@ const RecipesPage = () => {
   });
 
   // Filter recipes based on search term and selected tag
-  const filteredRecipes = recipes.filter(recipe => {
+  const filteredRecipes = recipes.filter((recipe: Recipe) => {
     const matchesSearch = recipe.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTag = !selectedTag || (recipe.tags && recipe.tags.includes(selectedTag));
     return matchesSearch && matchesTag;
@@ -173,36 +172,27 @@ const RecipesPage = () => {
               <div
                 key={recipe.id}
                 className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-transform hover:transform hover:scale-105 cursor-pointer hover:shadow-lg relative"
+                onClick={() => navigate(`/recipes/${createSlug(recipe.title)}`)}
               >
-                <Link 
-                  to={`/recipes/${createSlug(recipe.title)}`}
-                  className="block"
-                >
-                  <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
-                    {recipe.imageUrl ? (
-                      <img
-                        src={recipe.imageUrl}
-                        alt={recipe.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-gray-400 dark:text-white">No image</span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
+                <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700">
+                  {recipe.imageUrl ? (
+                    <img
+                      src={recipe.imageUrl}
+                      alt={recipe.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-gray-400 dark:text-white">No image</span>
+                    </div>
+                  )}
+                </div>
 
                 <div className="p-4">
-                  <Link 
-                    to={`/recipes/${createSlug(recipe.title)}`}
-                    className="block"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-                      {recipe.title}
-                    </h3>
-                  </Link>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {recipe.title}
+                  </h3>
 
                   <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,36 +246,51 @@ const RecipesPage = () => {
 
                   {/* Comments section */}
                   <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      <span>{recipe.comments_count ?? 0} comments</span>
-                    </div>
-                    
-                    {(recipe.comments_count ?? 0) > 0 && (
-                      <div className="space-y-2">
-                        {recipe.recent_comments?.slice(0, 3).map((comment: any) => (
-                          <div key={comment.id} className="flex items-start space-x-2 text-sm">
-                            <img
-                              src={comment.user?.avatar_url || '/default-avatar.png'}
-                              alt={comment.user?.username}
-                              className="w-6 h-6 rounded-full"
-                            />
-                            <div className="flex-1">
-                              <span className="font-medium">{comment.user?.username}</span>
-                              <p className="text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {(recipe.comments_count ?? 0) > 0 && recipe.recent_comments && (
+                      <div className="space-y-3 mt-2">
+                        {recipe.recent_comments.slice(0, 3).map((comment) => (
+                          <div key={comment.id} className="flex items-start space-x-3 text-sm">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <img
+                                src={comment.user?.avatar_url || '/default-avatar.png'}
+                                alt={comment.user?.username || 'User'}
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 dark:text-white truncate">
+                                {comment.user?.username || 'Unknown user'}
+                              </p>
+                              <p className="text-gray-600 dark:text-gray-400 line-clamp-2 break-words">
                                 {comment.content}
                               </p>
                             </div>
                           </div>
                         ))}
                         {(recipe.comments_count ?? 0) > 3 && (
-                          <Link
-                            to={`/recipes/${createSlug(recipe.title)}#comments`}
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/recipes/${createSlug(recipe.title)}#comments`);
+                            }}
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 inline-block mt-1 cursor-pointer"
                           >
                             View all {recipe.comments_count} comments
-                          </Link>
+                          </span>
                         )}
+                      </div>
+                    )}
+                    {(!recipe.comments_count || recipe.comments_count === 0) && (
+                      <div className="mt-2">
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/recipes/${createSlug(recipe.title)}#comments`);
+                          }}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                        >
+                          There are no comments on this post yet, be the first to comment?
+                        </span>
                       </div>
                     )}
                   </div>

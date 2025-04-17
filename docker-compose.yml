@@ -1,0 +1,56 @@
+services:
+  # Frontend React Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${TARGET:-builder} # Use builder for dev, production for prod
+    container_name: recipe-frontend
+    volumes:
+      - .:/app  # Mount the source code for hot reloading (dev only)
+      - /app/node_modules  # Don't override node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"  # Development port
+      - "3000:3000"  # Additional port used by Vite
+      - "${PROD_PORT:-80}:80"  # Production port (only used in production)
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
+    command: ${FRONTEND_COMMAND:-npm run dev}
+    networks:
+      - app-network
+    depends_on:
+      - api
+    restart: ${RESTART_POLICY:-no}
+
+  # Backend API Service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: ${TARGET:-builder} # Use builder for dev, production for prod
+    container_name: recipe-api
+    volumes:
+      - ./api:/app  # Mount the source code for hot reloading (dev only)
+      - /app/node_modules  # Don't override node_modules
+    ports:
+      - "${API_PORT:-3001}:3001"  # API port
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3001
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-900000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+    command: ${API_COMMAND:-npm run dev}
+    networks:
+      - app-network
+    restart: ${RESTART_POLICY:-no}
+
+# Production compose file would use the production targets instead of builder
+# and would include environment-specific configurations
+
+networks:
+  app-network:
+    driver: bridge 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { recipeService } from '../services/recipeService';
 import { bookmarkService } from '../services/bookmarkService';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +16,7 @@ const createSlug = (title: string): string => {
 const RecipeDetailPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [recipe, setRecipe] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -29,12 +30,24 @@ const RecipeDetailPage = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
+  const commentsRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (slug) {
       fetchRecipeBySlug(slug);
     }
   }, [slug]);
+
+  // Handle scrolling to comments section when URL has #comments hash
+  useEffect(() => {
+    // Wait for content to load and then scroll if needed
+    if (!loading && location.hash === '#comments' && commentsRef.current) {
+      // Use a small timeout to ensure the DOM is fully rendered
+      setTimeout(() => {
+        commentsRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [loading, location.hash]);
   
   const fetchRecipeBySlug = async (recipeSlug: string) => {
     setLoading(true);
@@ -446,7 +459,7 @@ const RecipeDetailPage = () => {
           </div>
 
           {/* Comments Section */}
-          <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8">
+          <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-8" ref={commentsRef}>
             <Comments recipeId={recipe.id} />
           </div>
         </div>
